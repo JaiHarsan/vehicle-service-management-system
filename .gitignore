@@ -1,0 +1,17 @@
+target/
+*.class
+
+# IDE and Editor files
+.idea/
+.vscode/
+*.iml
+
+# Local Credentials and Configs
+application.properties
+*.env
+local.properties
+
+# Temp files
+*.log
+lib/
+
