@@ -1,5 +1,6 @@
 package com.vehicleservice.main;
 
+import com.vehicleservice.config.DatabaseConnection;
 import com.vehicleservice.console.ConsoleUI;
 import com.vehicleservice.repository.*;
 import com.vehicleservice.service.*;
@@ -7,15 +8,23 @@ import com.vehicleservice.service.*;
 public class VehicleServiceApplication {
 
     public static void main(String[] args) {
-        // 1. Initialize Repositories (In-Memory for Phase 1)
-        CustomerRepository customerRepository = new InMemoryCustomerRepository();
-        VehicleRepository vehicleRepository = new InMemoryVehicleRepository();
-        MechanicRepository mechanicRepository = new InMemoryMechanicRepository();
-        ServiceRepository serviceRepository = new InMemoryServiceRepository();
-        ServiceBookingRepository bookingRepository = new InMemoryServiceBookingRepository();
-        ServiceRecordRepository recordRepository = new InMemoryServiceRecordRepository();
-        ServiceDetailRepository detailRepository = new InMemoryServiceDetailRepository();
-        BillRepository billRepository = new InMemoryBillRepository();
+        System.out.println("Connecting to MySQL Database...");
+        if (!DatabaseConnection.testConnection()) {
+            System.err.println("❌ Failed to connect to MySQL database!");
+            System.err.println("Please check DatabaseConnection configuration or application.properties file.");
+            return;
+        }
+        System.out.println("✅ Connected successfully to MySQL Database: vehicle_service");
+
+        // 1. Initialize JDBC DAO Repositories (Phase 2 - MySQL Persistence)
+        CustomerRepository customerRepository = new JdbcCustomerRepository();
+        VehicleRepository vehicleRepository = new JdbcVehicleRepository();
+        MechanicRepository mechanicRepository = new JdbcMechanicRepository();
+        ServiceRepository serviceRepository = new JdbcServiceRepository();
+        ServiceBookingRepository bookingRepository = new JdbcServiceBookingRepository();
+        ServiceRecordRepository recordRepository = new JdbcServiceRecordRepository();
+        ServiceDetailRepository detailRepository = new JdbcServiceDetailRepository();
+        BillRepository billRepository = new JdbcBillRepository();
 
         // 2. Initialize Business Service Layer
         CustomerService customerService = new CustomerService(customerRepository);
@@ -29,10 +38,7 @@ public class VehicleServiceApplication {
         // 3. Initialize Console User Interface
         ConsoleUI consoleUI = new ConsoleUI(customerService, vehicleService, mechanicService, catalogService, bookingService, recordService, billingService);
 
-        // 4. Pre-seed initial sample data for easy demonstration
-        consoleUI.seedSampleData();
-
-        // 5. Start Interactive CLI Main Menu
+        // 4. Start Interactive CLI Main Menu
         consoleUI.start();
     }
 }
