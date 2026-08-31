@@ -1,55 +1,38 @@
 package com.vehicleservice.main;
 
-import com.vehicleservice.model.*;
-import com.vehicleservice.util.InputValidator;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
+import com.vehicleservice.console.ConsoleUI;
+import com.vehicleservice.repository.*;
+import com.vehicleservice.service.*;
 
 public class VehicleServiceApplication {
 
     public static void main(String[] args) {
-        System.out.println("========================================");
-        System.out.println(" VEHICLE SERVICE MANAGEMENT SYSTEM");
-        System.out.println("   Domain Layer & OOP Demonstration");
-        System.out.println("========================================");
-        System.out.println();
+        // 1. Initialize Repositories (In-Memory for Phase 1)
+        CustomerRepository customerRepository = new InMemoryCustomerRepository();
+        VehicleRepository vehicleRepository = new InMemoryVehicleRepository();
+        MechanicRepository mechanicRepository = new InMemoryMechanicRepository();
+        ServiceRepository serviceRepository = new InMemoryServiceRepository();
+        ServiceBookingRepository bookingRepository = new InMemoryServiceBookingRepository();
+        ServiceRecordRepository recordRepository = new InMemoryServiceRecordRepository();
+        ServiceDetailRepository detailRepository = new InMemoryServiceDetailRepository();
+        BillRepository billRepository = new InMemoryBillRepository();
 
-        // 1. Instantiate Customer (Inherits from Person)
-        Customer customer = new Customer(1, "Arun Kumar", "9876543210", "arun@example.com");
-        System.out.println("Created Customer: " + customer);
-        System.out.println("  Valid Phone? " + InputValidator.isValidPhone(customer.getPhone()));
+        // 2. Initialize Business Service Layer
+        CustomerService customerService = new CustomerService(customerRepository);
+        VehicleService vehicleService = new VehicleService(vehicleRepository, customerRepository);
+        MechanicService mechanicService = new MechanicService(mechanicRepository);
+        ServiceManagementService catalogService = new ServiceManagementService(serviceRepository);
+        BookingService bookingService = new BookingService(bookingRepository, vehicleRepository, serviceRepository, mechanicRepository);
+        ServiceRecordService recordService = new ServiceRecordService(recordRepository, bookingRepository, serviceRepository, detailRepository);
+        BillingService billingService = new BillingService(billRepository, recordRepository);
 
-        // 2. Instantiate Vehicle owned by Customer
-        Vehicle vehicle = new Vehicle(101, "TN-01-AB-1234", "Toyota", "Innova", VehicleType.CAR, customer.getCustomerId());
-        System.out.println("Created Vehicle: " + vehicle);
-        System.out.println("  Valid Reg No? " + InputValidator.isValidRegistrationNumber(vehicle.getRegistrationNumber()));
+        // 3. Initialize Console User Interface
+        ConsoleUI consoleUI = new ConsoleUI(customerService, vehicleService, mechanicService, catalogService, bookingService, recordService, billingService);
 
-        // 3. Instantiate Mechanic (Inherits from Person)
-        Mechanic mechanic = new Mechanic(201, "Ramesh", "9123456789", Specialization.ENGINE, Availability.AVAILABLE);
-        System.out.println("Created Mechanic: " + mechanic);
+        // 4. Pre-seed initial sample data for easy demonstration
+        consoleUI.seedSampleData();
 
-        // 4. Instantiate Service catalog item
-        Service service = new Service(301, "Full Engine Service", new BigDecimal("3500.00"), "Comprehensive engine checkup and oil change");
-        System.out.println("Created Service: " + service);
-
-        // 5. Instantiate Service Booking
-        ServiceBooking booking = new ServiceBooking(401, vehicle.getVehicleId(), mechanic.getMechanicId(), service.getServiceId(), LocalDate.now(), BookingStatus.ASSIGNED, "Regular engine maintenance");
-        System.out.println("Created Service Booking: " + booking);
-
-        // 6. Instantiate Completed Service Record
-        ServiceRecord record = new ServiceRecord(501, booking.getBookingId(), LocalDate.now(), "Engine oil replaced, filter cleaned", new BigDecimal("3500.00"));
-        System.out.println("Created Service Record: " + record);
-
-        // 7. Instantiate Service Detail line-item (Composition)
-        ServiceDetail detail = new ServiceDetail(601, record.getRecordId(), service.getServiceId(), 1, service.getBasePrice());
-        System.out.println("Created Service Detail: " + detail);
-
-        // 8. Instantiate Bill with automatic calculation (Subtotal + Tax - Discount)
-        Bill bill = new Bill(record.getRecordId(), record.getTotalServiceCost(), new BigDecimal("500.00"), new BigDecimal("300.00"), new BigDecimal("0.18"), new BigDecimal("200.00"));
-        bill.setBillId(701);
-        System.out.println("Generated Bill: " + bill);
-
-        System.out.println("\nDomain models instantiated and validated successfully.");
+        // 5. Start Interactive CLI Main Menu
+        consoleUI.start();
     }
 }
