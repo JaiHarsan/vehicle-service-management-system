@@ -5,3 +5,4 @@ public class DuplicateVehicleException extends RuntimeException {
         super(message);
     }
 }
+ 
