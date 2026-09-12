@@ -11,7 +11,7 @@ The system is designed to automate the major operations of a vehicle service cen
 Vehicle service centers need to maintain information about customers, vehicles, mechanics, services, bookings, service records, and payments.
 
 Managing these records manually can result in:
-
+ 
 * Duplicate vehicle registrations
 * Loss of customer information
 * Difficulty maintaining service history
