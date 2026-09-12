@@ -4,7 +4,7 @@ A console-based **Vehicle Service Management System** developed using **Java, JD
 
 The system is designed to automate the major operations of a vehicle service center, including customer management, vehicle registration, mechanic management, service booking, service tracking, service history, and billing.
 
----
+--- 
 
 ## 1. Project Overview
 
