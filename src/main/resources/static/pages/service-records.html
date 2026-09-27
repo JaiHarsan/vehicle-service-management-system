@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Service Records – Vehicle Service Management System</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo"><div class="logo-icon">🚗</div><div><div class="logo-text">VehicleServ</div><div class="logo-sub">Management System</div></div></div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Main</div>
+      <a class="nav-item" data-page="index.html" href="../index.html"><span class="nav-icon">📊</span> Dashboard</a>
+      <div class="nav-section-label">Management</div>
+      <a class="nav-item" data-page="customers.html" href="customers.html"><span class="nav-icon">👥</span> Customers</a>
+      <a class="nav-item" data-page="vehicles.html"  href="vehicles.html"><span class="nav-icon">🚙</span> Vehicles</a>
+      <a class="nav-item" data-page="mechanics.html" href="mechanics.html"><span class="nav-icon">🔧</span> Mechanics</a>
+      <a class="nav-item" data-page="services.html"  href="services.html"><span class="nav-icon">🛠️</span> Services</a>
+      <div class="nav-section-label">Operations</div>
+      <a class="nav-item" data-page="bookings.html"        href="bookings.html"><span class="nav-icon">📅</span> Bookings</a>
+      <a class="nav-item" data-page="service-records.html" href="service-records.html"><span class="nav-icon">📋</span> Service Records</a>
+      <a class="nav-item" data-page="billing.html"         href="billing.html"><span class="nav-icon">💰</span> Billing</a>
+    </nav>
+    <div class="sidebar-footer">Phase 9A &bull; Spring Boot + MySQL</div>
+  </aside>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="main-wrapper">
+    <header class="top-header">
+      <button class="menu-toggle" id="menuToggle">☰</button>
+      <div class="header-title">Service Records <span class="header-subtitle">Post-service documentation</span></div>
+      <div class="header-right"><div class="header-badge"><span class="status-dot"></span> Live Data</div></div>
+    </header>
+
+    <main class="page-content">
+      <div class="page-header">
+        <div class="page-header-left"><h1>Service Records</h1><p>Record and view completed service details</p></div>
+        <button class="btn btn-primary" id="btnAddRecord">+ Add Record</button>
+      </div>
+      <div id="pageAlerts"></div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📋 All Service Records</span>
+          <button class="btn btn-outline btn-sm" id="btnRefresh">↻ Refresh</button>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead><tr><th>Record ID</th><th>Booking ID</th><th>Completion Date</th><th>Total Cost</th><th>Remarks</th><th>Actions</th></tr></thead>
+            <tbody id="recordsTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ADD RECORD MODAL -->
+<div class="modal-overlay hidden" id="recordModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Add Service Record</span>
+      <button class="modal-close" data-dismiss="modal">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-info" style="margin-bottom:12px">
+        <span class="alert-icon">ℹ️</span>
+        <span>Service records can only be created for <strong>COMPLETED</strong> bookings that do not already have a record.</span>
+      </div>
+      <div id="modalAlerts"></div>
+      <form id="recordForm" novalidate>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="rBookingId">Booking ID *</label>
+            <input class="form-control" id="rBookingId" required type="number" min="1" placeholder="e.g. 404" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="rDate">Completion Date</label>
+            <input class="form-control" id="rDate" type="date" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="rExtraCost">Extra Parts Cost (₹)</label>
+            <input class="form-control" id="rExtraCost" type="number" min="0" step="0.01" placeholder="0.00" />
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label class="form-label" for="rRemarks">Remarks</label>
+            <textarea class="form-control" id="rRemarks" rows="3" placeholder="Service notes, observations…"></textarea>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-dismiss="modal">Cancel</button>
+      <button class="btn btn-primary" id="btnSaveRecord">Save Record</button>
+    </div>
+  </div>
+</div>
+
+<!-- DETAILS MODAL -->
+<div class="modal-overlay hidden" id="detailsModal">
+  <div class="modal" style="max-width:620px">
+    <div class="modal-header">
+      <span class="modal-title">Record Details – #<span id="detailRecordId"></span></span>
+      <button class="modal-close" data-dismiss="modal">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="detailsTbodyWrap">
+        <table>
+          <thead><tr><th>Detail ID</th><th>Service ID</th><th>Quantity</th><th>Unit Price</th><th>Subtotal</th></tr></thead>
+          <tbody id="detailsTbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-dismiss="modal">Close</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+(function() {
+  let allRecords = [];
+  const tbody = document.getElementById('recordsTbody');
+  const pageAlerts  = document.getElementById('pageAlerts');
+  const modalAlerts = document.getElementById('modalAlerts');
+  const saveBtn     = document.getElementById('btnSaveRecord');
+
+  async function loadRecords() {
+    tableLoading(tbody, 6);
+    try {
+      allRecords = await apiGet('/api/service-records');
+      renderTable(allRecords);
+    } catch(e) {
+      showAlert(pageAlerts, e.message, 'danger');
+      tableEmpty(tbody, 'Failed to load records.', 6);
+    }
+  }
+
+  function renderTable(data) {
+    if (!data || data.length === 0) { tableEmpty(tbody, 'No service records found.', 6); return; }
+    tbody.innerHTML = data.slice().reverse().map(r => `
+      <tr>
+        <td class="fw-600">#${escHtml(r.recordId)}</td>
+        <td>Booking #${escHtml(r.bookingId)}</td>
+        <td>${formatDate(r.completionDate)}</td>
+        <td class="fw-600">${formatCurrency(r.totalServiceCost)}</td>
+        <td class="text-sm text-muted">${escHtml(r.remarks) || '—'}</td>
+        <td>
+          <button class="btn btn-outline btn-sm" onclick="viewDetails(${r.recordId})">View Details</button>
+        </td>
+      </tr>`).join('');
+  }
+
+  document.getElementById('btnAddRecord').addEventListener('click', () => {
+    document.getElementById('recordForm').reset();
+    document.getElementById('rDate').value = new Date().toISOString().slice(0,10);
+    clearAlerts(modalAlerts);
+    openModal('recordModal');
+  });
+
+  saveBtn.addEventListener('click', async () => {
+    clearAlerts(modalAlerts);
+    const bid      = document.getElementById('rBookingId').value.trim();
+    const date     = document.getElementById('rDate').value;
+    const extra    = document.getElementById('rExtraCost').value.trim();
+    const remarks  = document.getElementById('rRemarks').value.trim();
+    if (!bid) { showAlert(modalAlerts, 'Booking ID is required.', 'warning'); return; }
+
+    const extraParam = extra ? `?extraPartsCost=${encodeURIComponent(extra)}` : '';
+    const payload = { bookingId: parseInt(bid), completionDate: date || null, remarks: remarks || null };
+    setLoading(saveBtn, true, 'Save Record');
+    try {
+      await apiPost('/api/service-records' + extraParam, payload);
+      closeModal('recordModal');
+      showAlert(pageAlerts, 'Service record created!', 'success');
+      await loadRecords();
+    } catch(e) {
+      showAlert(modalAlerts, e.message, 'danger');
+    } finally {
+      setLoading(saveBtn, false, 'Save Record');
+    }
+  });
+
+  window.viewDetails = async function(id) {
+    document.getElementById('detailRecordId').textContent = id;
+    const dtbody = document.getElementById('detailsTbody');
+    tableLoading(dtbody, 5);
+    openModal('detailsModal');
+    try {
+      const details = await apiGet(`/api/service-records/${id}/details`);
+      if (!details || details.length === 0) {
+        tableEmpty(dtbody, 'No detail lines found.', 5);
+      } else {
+        dtbody.innerHTML = details.map(d => `
+          <tr>
+            <td>${escHtml(d.detailId)}</td>
+            <td>${escHtml(d.serviceId)}</td>
+            <td>${escHtml(d.quantity)}</td>
+            <td>${formatCurrency(d.unitPrice)}</td>
+            <td class="fw-600">${formatCurrency(d.subtotal)}</td>
+          </tr>`).join('');
+      }
+    } catch(e) {
+      tableEmpty(dtbody, 'Failed to load details: ' + e.message, 5);
+    }
+  };
+
+  document.getElementById('btnRefresh').addEventListener('click', loadRecords);
+  loadRecords();
+})();
+</script>
+</body>
+</html>

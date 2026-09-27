@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Billing – Vehicle Service Management System</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo"><div class="logo-icon">🚗</div><div><div class="logo-text">VehicleServ</div><div class="logo-sub">Management System</div></div></div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Main</div>
+      <a class="nav-item" data-page="index.html" href="../index.html"><span class="nav-icon">📊</span> Dashboard</a>
+      <div class="nav-section-label">Management</div>
+      <a class="nav-item" data-page="customers.html" href="customers.html"><span class="nav-icon">👥</span> Customers</a>
+      <a class="nav-item" data-page="vehicles.html"  href="vehicles.html"><span class="nav-icon">🚙</span> Vehicles</a>
+      <a class="nav-item" data-page="mechanics.html" href="mechanics.html"><span class="nav-icon">🔧</span> Mechanics</a>
+      <a class="nav-item" data-page="services.html"  href="services.html"><span class="nav-icon">🛠️</span> Services</a>
+      <div class="nav-section-label">Operations</div>
+      <a class="nav-item" data-page="bookings.html"        href="bookings.html"><span class="nav-icon">📅</span> Bookings</a>
+      <a class="nav-item" data-page="service-records.html" href="service-records.html"><span class="nav-icon">📋</span> Service Records</a>
+      <a class="nav-item" data-page="billing.html"         href="billing.html"><span class="nav-icon">💰</span> Billing</a>
+    </nav>
+    <div class="sidebar-footer">Phase 9A &bull; Spring Boot + MySQL</div>
+  </aside>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="main-wrapper">
+    <header class="top-header">
+      <button class="menu-toggle" id="menuToggle">☰</button>
+      <div class="header-title">Billing <span class="header-subtitle">Invoices &amp; payments</span></div>
+      <div class="header-right"><div class="header-badge"><span class="status-dot"></span> Live Data</div></div>
+    </header>
+
+    <main class="page-content">
+      <div class="page-header">
+        <div class="page-header-left"><h1>Billing</h1><p>Generate bills and track payment status</p></div>
+        <button class="btn btn-primary" id="btnGenerateBill">+ Generate Bill</button>
+      </div>
+      <div id="pageAlerts"></div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">💰 All Bills</span>
+          <button class="btn btn-outline btn-sm" id="btnRefresh">↻ Refresh</button>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Bill ID</th><th>Record ID</th><th>Service Cost</th>
+                <th>Parts</th><th>Labour</th><th>Tax</th><th>Discount</th>
+                <th>Total</th><th>Status</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="billsTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- GENERATE BILL MODAL -->
+<div class="modal-overlay hidden" id="billModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Generate Bill</span>
+      <button class="modal-close" data-dismiss="modal">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-info" style="margin-bottom:12px">
+        <span class="alert-icon">ℹ️</span>
+        <span>A bill requires an existing <strong>Service Record</strong>. Tax rate defaults to 18% GST.</span>
+      </div>
+      <div id="modalAlerts"></div>
+      <form id="billForm" novalidate>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="bRecordId">Service Record ID *</label>
+            <input class="form-control" id="bRecordId" required type="number" min="1" placeholder="e.g. 501" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="bPartsCost">Parts Cost (₹)</label>
+            <input class="form-control" id="bPartsCost" type="number" min="0" step="0.01" placeholder="0.00" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="bLaborCost">Labour Cost (₹)</label>
+            <input class="form-control" id="bLaborCost" type="number" min="0" step="0.01" placeholder="0.00" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="bTaxRate">Tax Rate (e.g. 0.18 for 18%)</label>
+            <input class="form-control" id="bTaxRate" type="number" min="0" max="1" step="0.01" placeholder="0.18" value="0.18"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="bDiscount">Discount (₹)</label>
+            <input class="form-control" id="bDiscount" type="number" min="0" step="0.01" placeholder="0.00" />
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-dismiss="modal">Cancel</button>
+      <button class="btn btn-primary" id="btnSaveBill">Generate</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+(function() {
+  let allBills = [];
+  const tbody = document.getElementById('billsTbody');
+  const pageAlerts  = document.getElementById('pageAlerts');
+  const modalAlerts = document.getElementById('modalAlerts');
+  const saveBtn     = document.getElementById('btnSaveBill');
+
+  async function loadBills() {
+    tableLoading(tbody, 10);
+    try {
+      allBills = await apiGet('/api/bills');
+      renderTable(allBills);
+    } catch(e) {
+      showAlert(pageAlerts, e.message, 'danger');
+      tableEmpty(tbody, 'Failed to load bills.', 10);
+    }
+  }
+
+  function renderTable(data) {
+    if (!data || data.length === 0) { tableEmpty(tbody, 'No bills found.', 10); return; }
+    tbody.innerHTML = data.slice().reverse().map(b => `
+      <tr>
+        <td class="fw-600">#${escHtml(b.billId)}</td>
+        <td>R-${escHtml(b.recordId)}</td>
+        <td>${formatCurrency(b.serviceCost)}</td>
+        <td>${formatCurrency(b.partsCost)}</td>
+        <td>${formatCurrency(b.laborCost)}</td>
+        <td>${formatCurrency(b.tax)}</td>
+        <td>${formatCurrency(b.discount)}</td>
+        <td class="fw-600">${formatCurrency(b.totalAmount)}</td>
+        <td>${paymentStatusBadge(b.paymentStatus)}</td>
+        <td>
+          ${b.paymentStatus === 'PENDING'
+            ? `<button class="btn btn-success btn-sm" onclick="markPaid(${b.billId})">Mark Paid</button>`
+            : '<span class="text-muted text-sm">Settled</span>'}
+        </td>
+      </tr>`).join('');
+  }
+
+  document.getElementById('btnGenerateBill').addEventListener('click', () => {
+    document.getElementById('billForm').reset();
+    document.getElementById('bTaxRate').value = '0.18';
+    clearAlerts(modalAlerts);
+    openModal('billModal');
+  });
+
+  saveBtn.addEventListener('click', async () => {
+    clearAlerts(modalAlerts);
+    const rid   = document.getElementById('bRecordId').value.trim();
+    if (!rid) { showAlert(modalAlerts, 'Service Record ID is required.', 'warning'); return; }
+
+    const payload = {
+      recordId:  parseInt(rid),
+      partsCost: parseFloat(document.getElementById('bPartsCost').value || 0),
+      laborCost: parseFloat(document.getElementById('bLaborCost').value || 0),
+      taxRate:   parseFloat(document.getElementById('bTaxRate').value   || 0.18),
+      discount:  parseFloat(document.getElementById('bDiscount').value  || 0)
+    };
+    setLoading(saveBtn, true, 'Generate');
+    try {
+      await apiPost('/api/bills', payload);
+      closeModal('billModal');
+      showAlert(pageAlerts, 'Bill generated successfully!', 'success');
+      await loadBills();
+    } catch(e) {
+      showAlert(modalAlerts, e.message, 'danger');
+    } finally {
+      setLoading(saveBtn, false, 'Generate');
+    }
+  });
+
+  window.markPaid = async function(id) {
+    if (!confirm('Mark bill #' + id + ' as PAID?')) return;
+    try {
+      await apiPut(`/api/bills/${id}/pay`);
+      showAlert(pageAlerts, 'Bill marked as PAID!', 'success');
+      await loadBills();
+    } catch(e) {
+      showAlert(pageAlerts, e.message, 'danger');
+    }
+  };
+
+  document.getElementById('btnRefresh').addEventListener('click', loadBills);
+  loadBills();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Service Catalog – Vehicle Service Management System</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo"><div class="logo-icon">🚗</div><div><div class="logo-text">VehicleServ</div><div class="logo-sub">Management System</div></div></div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Main</div>
+      <a class="nav-item" data-page="index.html" href="../index.html"><span class="nav-icon">📊</span> Dashboard</a>
+      <div class="nav-section-label">Management</div>
+      <a class="nav-item" data-page="customers.html" href="customers.html"><span class="nav-icon">👥</span> Customers</a>
+      <a class="nav-item" data-page="vehicles.html"  href="vehicles.html"><span class="nav-icon">🚙</span> Vehicles</a>
+      <a class="nav-item" data-page="mechanics.html" href="mechanics.html"><span class="nav-icon">🔧</span> Mechanics</a>
+      <a class="nav-item" data-page="services.html"  href="services.html"><span class="nav-icon">🛠️</span> Services</a>
+      <div class="nav-section-label">Operations</div>
+      <a class="nav-item" data-page="bookings.html"        href="bookings.html"><span class="nav-icon">📅</span> Bookings</a>
+      <a class="nav-item" data-page="service-records.html" href="service-records.html"><span class="nav-icon">📋</span> Service Records</a>
+      <a class="nav-item" data-page="billing.html"         href="billing.html"><span class="nav-icon">💰</span> Billing</a>
+    </nav>
+    <div class="sidebar-footer">Phase 9A &bull; Spring Boot + MySQL</div>
+  </aside>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="main-wrapper">
+    <header class="top-header">
+      <button class="menu-toggle" id="menuToggle">☰</button>
+      <div class="header-title">Service Catalog <span class="header-subtitle">Offered services &amp; pricing</span></div>
+      <div class="header-right"><div class="header-badge"><span class="status-dot"></span> Live Data</div></div>
+    </header>
+
+    <main class="page-content">
+      <div class="page-header">
+        <div class="page-header-left"><h1>Service Catalog</h1><p>Define and manage offered vehicle services</p></div>
+        <button class="btn btn-primary" id="btnAddService">+ Add Service</button>
+      </div>
+      <div id="pageAlerts"></div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🛠️ Services</span>
+          <button class="btn btn-outline btn-sm" id="btnRefresh">↻ Refresh</button>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead><tr><th>ID</th><th>Service Name</th><th>Base Price (₹)</th><th>Description</th><th>Actions</th></tr></thead>
+            <tbody id="servicesTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay hidden" id="serviceModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="serviceModalTitle">Add Service</span>
+      <button class="modal-close" data-dismiss="modal">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="modalAlerts"></div>
+      <form id="serviceForm" novalidate>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="sName">Service Name *</label>
+            <input class="form-control" id="sName" required placeholder="e.g. General Service" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="sPrice">Base Price (₹) *</label>
+            <input class="form-control" id="sPrice" required type="number" min="0" step="0.01" placeholder="e.g. 1500.00" />
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label class="form-label" for="sDesc">Description</label>
+            <textarea class="form-control" id="sDesc" rows="3" placeholder="Brief description of the service…"></textarea>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-dismiss="modal">Cancel</button>
+      <button class="btn btn-primary" id="btnSaveService">Save Service</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM -->
+<div class="modal-overlay hidden" id="deleteModal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header"><span class="modal-title">Confirm Delete</span><button class="modal-close" data-dismiss="modal">×</button></div>
+    <div class="modal-body"><p>Delete service <strong id="deleteServiceName"></strong>?</p></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-dismiss="modal">Cancel</button>
+      <button class="btn btn-danger" id="btnConfirmDelete">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+(function() {
+  let allServices = [];
+  let editingId = null;
+  const tbody = document.getElementById('servicesTbody');
+  const pageAlerts  = document.getElementById('pageAlerts');
+  const modalAlerts = document.getElementById('modalAlerts');
+  const saveBtn     = document.getElementById('btnSaveService');
+
+  async function loadServices() {
+    tableLoading(tbody, 5);
+    try {
+      allServices = await apiGet('/api/services');
+      renderTable(allServices);
+    } catch(e) {
+      showAlert(pageAlerts, e.message, 'danger');
+      tableEmpty(tbody, 'Failed to load services.', 5);
+    }
+  }
+
+  function renderTable(data) {
+    if (!data || data.length === 0) { tableEmpty(tbody, 'No services found.', 5); return; }
+    tbody.innerHTML = data.map(s => `
+      <tr>
+        <td class="fw-600">${escHtml(s.serviceId)}</td>
+        <td>${escHtml(s.serviceName)}</td>
+        <td class="fw-600">${formatCurrency(s.basePrice)}</td>
+        <td class="text-muted text-sm">${escHtml(s.description) || '—'}</td>
+        <td>
+          <div class="table-actions">
+            <button class="btn btn-outline btn-sm btn-icon" onclick="editService(${s.serviceId})">✏️</button>
+            <button class="btn btn-danger  btn-sm btn-icon" onclick="deleteService(${s.serviceId}, '${escHtml(s.serviceName)}')">🗑️</button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+
+  document.getElementById('btnAddService').addEventListener('click', () => {
+    editingId = null;
+    document.getElementById('serviceModalTitle').textContent = 'Add Service';
+    document.getElementById('serviceForm').reset();
+    clearAlerts(modalAlerts);
+    openModal('serviceModal');
+  });
+
+  saveBtn.addEventListener('click', async () => {
+    clearAlerts(modalAlerts);
+    const name  = document.getElementById('sName').value.trim();
+    const price = document.getElementById('sPrice').value.trim();
+    const desc  = document.getElementById('sDesc').value.trim();
+
+    if (!name || !price) { showAlert(modalAlerts, 'Name and price are required.', 'warning'); return; }
+
+    const payload = { serviceName: name, basePrice: parseFloat(price), description: desc || null };
+    setLoading(saveBtn, true);
+    try {
+      if (editingId) {
+        await apiPut(`/api/services/${editingId}`, payload);
+        showAlert(pageAlerts, 'Service updated!', 'success');
+      } else {
+        await apiPost('/api/services', payload);
+        showAlert(pageAlerts, 'Service added!', 'success');
+      }
+      closeModal('serviceModal');
+      await loadServices();
+    } catch(e) {
+      showAlert(modalAlerts, e.message, 'danger');
+    } finally {
+      setLoading(saveBtn, false, 'Save Service');
+    }
+  });
+
+  window.editService = function(id) {
+    const s = allServices.find(x => x.serviceId === id);
+    if (!s) return;
+    editingId = id;
+    document.getElementById('serviceModalTitle').textContent = 'Edit Service';
+    document.getElementById('sName').value  = s.serviceName || '';
+    document.getElementById('sPrice').value = s.basePrice || '';
+    document.getElementById('sDesc').value  = s.description || '';
+    clearAlerts(modalAlerts);
+    openModal('serviceModal');
+  };
+
+  let pendingDeleteId = null;
+  window.deleteService = function(id, name) {
+    pendingDeleteId = id;
+    document.getElementById('deleteServiceName').textContent = name;
+    openModal('deleteModal');
+  };
+  document.getElementById('btnConfirmDelete').addEventListener('click', async () => {
+    if (!pendingDeleteId) return;
+    const btn = document.getElementById('btnConfirmDelete');
+    setLoading(btn, true, 'Delete');
+    try {
+      await apiDelete(`/api/services/${pendingDeleteId}`);
+      closeModal('deleteModal');
+      showAlert(pageAlerts, 'Service deleted.', 'success');
+      await loadServices();
+    } catch(e) {
+      closeModal('deleteModal');
+      showAlert(pageAlerts, e.message, 'danger');
+    } finally {
+      setLoading(btn, false, 'Delete');
+      pendingDeleteId = null;
+    }
+  });
+
+  document.getElementById('btnRefresh').addEventListener('click', loadServices);
+  loadServices();
+})();
+</script>
+</body>
+</html>

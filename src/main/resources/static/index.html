@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard – Vehicle Service Management System</title>
+  <meta name="description" content="Vehicle Service Management System dashboard showing live counts of customers, vehicles, mechanics, bookings, and bills." />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ========= SIDEBAR ========= -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🚗</div>
+      <div>
+        <div class="logo-text">VehicleServ</div>
+        <div class="logo-sub">Management System</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Main</div>
+      <a class="nav-item" data-page="index.html" href="index.html">
+        <span class="nav-icon">📊</span> Dashboard
+      </a>
+
+      <div class="nav-section-label">Management</div>
+      <a class="nav-item" data-page="customers.html" href="pages/customers.html">
+        <span class="nav-icon">👥</span> Customers
+      </a>
+      <a class="nav-item" data-page="vehicles.html" href="pages/vehicles.html">
+        <span class="nav-icon">🚙</span> Vehicles
+      </a>
+      <a class="nav-item" data-page="mechanics.html" href="pages/mechanics.html">
+        <span class="nav-icon">🔧</span> Mechanics
+      </a>
+      <a class="nav-item" data-page="services.html" href="pages/services.html">
+        <span class="nav-icon">🛠️</span> Services
+      </a>
+
+      <div class="nav-section-label">Operations</div>
+      <a class="nav-item" data-page="bookings.html" href="pages/bookings.html">
+        <span class="nav-icon">📅</span> Bookings
+      </a>
+      <a class="nav-item" data-page="service-records.html" href="pages/service-records.html">
+        <span class="nav-icon">📋</span> Service Records
+      </a>
+      <a class="nav-item" data-page="billing.html" href="pages/billing.html">
+        <span class="nav-icon">💰</span> Billing
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      Phase 9A &bull; Spring Boot + MySQL
+    </div>
+  </aside>
+
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- ========= MAIN ========= -->
+  <div class="main-wrapper">
+
+    <!-- Top Header -->
+    <header class="top-header">
+      <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
+      <div class="header-title">
+        Dashboard <span class="header-subtitle">Overview</span>
+      </div>
+      <div class="header-right">
+        <div class="header-badge">
+          <span class="status-dot"></span> Live Data
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Content -->
+    <main class="page-content">
+
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Welcome to VehicleServ</h1>
+          <p>Real-time overview from the MySQL database via Spring Boot REST API</p>
+        </div>
+        <button class="btn btn-outline" id="refreshDashboard">↻ Refresh</button>
+      </div>
+
+      <!-- Stats Cards -->
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card" style="--stat-color:#2563eb">
+          <div class="stat-icon">👥</div>
+          <div class="stat-value" id="statCustomers"><span class="spinner spinner-dark"></span></div>
+          <div class="stat-label">Total Customers</div>
+        </div>
+        <div class="stat-card" style="--stat-color:#0ea5e9">
+          <div class="stat-icon">🚙</div>
+          <div class="stat-value" id="statVehicles"><span class="spinner spinner-dark"></span></div>
+          <div class="stat-label">Total Vehicles</div>
+        </div>
+        <div class="stat-card" style="--stat-color:#7c3aed">
+          <div class="stat-icon">🔧</div>
+          <div class="stat-value" id="statMechanics"><span class="spinner spinner-dark"></span></div>
+          <div class="stat-label">Mechanics</div>
+        </div>
+        <div class="stat-card" style="--stat-color:#0891b2">
+          <div class="stat-icon">🛠️</div>
+          <div class="stat-value" id="statServices"><span class="spinner spinner-dark"></span></div>
+          <div class="stat-label">Service Catalog</div>
+        </div>
+        <div class="stat-card" style="--stat-color:#d97706">
+          <div class="stat-icon">📅</div>
+          <div class="stat-value" id="statBookings"><span class="spinner spinner-dark"></span></div>
+          <div class="stat-label">Total Bookings</div>
+        </div>
+        <div class="stat-card" style="--stat-color:#16a34a">
+          <div class="stat-icon">📋</div>
+          <div class="stat-value" id="statRecords"><span class="spinner spinner-dark"></span></div>
+          <div class="stat-label">Service Records</div>
+        </div>
+        <div class="stat-card" style="--stat-color:#dc2626">
+          <div class="stat-icon">💰</div>
+          <div class="stat-value" id="statBills"><span class="spinner spinner-dark"></span></div>
+          <div class="stat-label">Bills Generated</div>
+        </div>
+      </div>
+
+      <!-- Alert area -->
+      <div id="dashAlerts"></div>
+
+      <!-- Two-column detail cards -->
+      <div class="dashboard-grid">
+
+        <!-- Recent Bookings -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📅 Recent Bookings</span>
+            <a href="pages/bookings.html" class="btn btn-ghost btn-sm">View all →</a>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Vehicle ID</th>
+                  <th>Service ID</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="recentBookingsTbody">
+                <tr class="loading-row"><td colspan="5"><span class="spinner spinner-dark"></span> Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Recent Bills -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">💰 Recent Bills</span>
+            <a href="pages/billing.html" class="btn btn-ghost btn-sm">View all →</a>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Bill ID</th>
+                  <th>Record ID</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="recentBillsTbody">
+                <tr class="loading-row"><td colspan="4"><span class="spinner spinner-dark"></span> Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Mechanics Availability -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🔧 Mechanics</span>
+            <a href="pages/mechanics.html" class="btn btn-ghost btn-sm">Manage →</a>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr><th>ID</th><th>Name</th><th>Specialization</th><th>Status</th></tr>
+              </thead>
+              <tbody id="mechanicsTbody">
+                <tr class="loading-row"><td colspan="4"><span class="spinner spinner-dark"></span> Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Quick Links -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">⚡ Quick Actions</span>
+          </div>
+          <div class="card-body">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <a href="pages/customers.html" class="btn btn-primary w-full" style="justify-content:center;">+ Add Customer</a>
+              <a href="pages/vehicles.html"  class="btn btn-primary w-full" style="justify-content:center;">+ Add Vehicle</a>
+              <a href="pages/bookings.html"  class="btn btn-success w-full" style="justify-content:center;">+ New Booking</a>
+              <a href="pages/billing.html"   class="btn btn-warning w-full" style="justify-content:center;">+ Generate Bill</a>
+              <a href="pages/mechanics.html" class="btn btn-outline w-full" style="justify-content:center;">Mechanics</a>
+              <a href="pages/services.html"  class="btn btn-outline w-full" style="justify-content:center;">Service Catalog</a>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+(async function loadDashboard() {
+
+  async function safeGet(path) {
+    try { return await apiGet(path); }
+    catch (e) { return null; }
+  }
+
+  function setStat(id, data) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = data !== null ? (Array.isArray(data) ? data.length : '—') : '?';
+    if (data === null) el.style.color = 'var(--text-muted)';
+  }
+
+  async function load() {
+    const alertBox = document.getElementById('dashAlerts');
+    clearAlerts(alertBox);
+
+    const [customers, vehicles, mechanics, services, bookings, records, bills] = await Promise.all([
+      safeGet('/api/customers'),
+      safeGet('/api/vehicles'),
+      safeGet('/api/mechanics'),
+      safeGet('/api/services'),
+      safeGet('/api/bookings'),
+      safeGet('/api/service-records'),
+      safeGet('/api/bills')
+    ]);
+
+    if (!customers && !vehicles && !bookings) {
+      showAlert(alertBox, 'Could not connect to the backend. Make sure Spring Boot is running on port 8080.', 'danger', 0);
+    }
+
+    setStat('statCustomers', customers);
+    setStat('statVehicles',  vehicles);
+    setStat('statMechanics', mechanics);
+    setStat('statServices',  services);
+    setStat('statBookings',  bookings);
+    setStat('statRecords',   records);
+    setStat('statBills',     bills);
+
+    // Recent bookings
+    const bTbody = document.getElementById('recentBookingsTbody');
+    if (bookings && bookings.length > 0) {
+      const recent = bookings.slice(-5).reverse();
+      bTbody.innerHTML = recent.map(b => `
+        <tr>
+          <td class="fw-600">#${escHtml(b.bookingId)}</td>
+          <td>V-${escHtml(b.vehicleId)}</td>
+          <td>S-${escHtml(b.serviceId)}</td>
+          <td>${formatDate(b.serviceDate)}</td>
+          <td>${bookingStatusBadge(b.status)}</td>
+        </tr>`).join('');
+    } else {
+      tableEmpty(bTbody, 'No bookings yet.', 5);
+    }
+
+    // Recent bills
+    const billTbody = document.getElementById('recentBillsTbody');
+    if (bills && bills.length > 0) {
+      const recent = bills.slice(-5).reverse();
+      billTbody.innerHTML = recent.map(b => `
+        <tr>
+          <td class="fw-600">#${escHtml(b.billId)}</td>
+          <td>${escHtml(b.recordId)}</td>
+          <td>${formatCurrency(b.totalAmount)}</td>
+          <td>${paymentStatusBadge(b.paymentStatus)}</td>
+        </tr>`).join('');
+    } else {
+      tableEmpty(billTbody, 'No bills yet.', 4);
+    }
+
+    // Mechanics
+    const mTbody = document.getElementById('mechanicsTbody');
+    if (mechanics && mechanics.length > 0) {
+      mTbody.innerHTML = mechanics.map(m => `
+        <tr>
+          <td>${escHtml(m.mechanicId)}</td>
+          <td class="fw-600">${escHtml(m.name)}</td>
+          <td>${escHtml(m.specialization)}</td>
+          <td>${availabilityBadge(m.availability)}</td>
+        </tr>`).join('');
+    } else {
+      tableEmpty(mTbody, 'No mechanics.', 4);
+    }
+  }
+
+  await load();
+  document.getElementById('refreshDashboard').addEventListener('click', load);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Mechanics – Vehicle Service Management System</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo"><div class="logo-icon">🚗</div><div><div class="logo-text">VehicleServ</div><div class="logo-sub">Management System</div></div></div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Main</div>
+      <a class="nav-item" data-page="index.html" href="../index.html"><span class="nav-icon">📊</span> Dashboard</a>
+      <div class="nav-section-label">Management</div>
+      <a class="nav-item" data-page="customers.html" href="customers.html"><span class="nav-icon">👥</span> Customers</a>
+      <a class="nav-item" data-page="vehicles.html"  href="vehicles.html"><span class="nav-icon">🚙</span> Vehicles</a>
+      <a class="nav-item" data-page="mechanics.html" href="mechanics.html"><span class="nav-icon">🔧</span> Mechanics</a>
+      <a class="nav-item" data-page="services.html"  href="services.html"><span class="nav-icon">🛠️</span> Services</a>
+      <div class="nav-section-label">Operations</div>
+      <a class="nav-item" data-page="bookings.html"        href="bookings.html"><span class="nav-icon">📅</span> Bookings</a>
+      <a class="nav-item" data-page="service-records.html" href="service-records.html"><span class="nav-icon">📋</span> Service Records</a>
+      <a class="nav-item" data-page="billing.html"         href="billing.html"><span class="nav-icon">💰</span> Billing</a>
+    </nav>
+    <div class="sidebar-footer">Phase 9A &bull; Spring Boot + MySQL</div>
+  </aside>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="main-wrapper">
+    <header class="top-header">
+      <button class="menu-toggle" id="menuToggle">☰</button>
+      <div class="header-title">Mechanics <span class="header-subtitle">Workshop staff</span></div>
+      <div class="header-right"><div class="header-badge"><span class="status-dot"></span> Live Data</div></div>
+    </header>
+
+    <main class="page-content">
+      <div class="page-header">
+        <div class="page-header-left"><h1>Mechanics</h1><p>Add, update and manage workshop mechanics</p></div>
+        <button class="btn btn-primary" id="btnAddMechanic">+ Add Mechanic</button>
+      </div>
+      <div id="pageAlerts"></div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🔧 Mechanic List</span>
+          <button class="btn btn-outline btn-sm" id="btnRefresh">↻ Refresh</button>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Specialization</th><th>Availability</th><th>Actions</th></tr></thead>
+            <tbody id="mechanicsTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay hidden" id="mechanicModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="mechanicModalTitle">Add Mechanic</span>
+      <button class="modal-close" data-dismiss="modal">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="modalAlerts"></div>
+      <form id="mechanicForm" novalidate>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="mName">Full Name *</label>
+            <input class="form-control" id="mName" required placeholder="e.g. Ramesh" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="mPhone">Phone *</label>
+            <input class="form-control" id="mPhone" required placeholder="10-digit mobile" />
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label class="form-label" for="mSpec">Specialization *</label>
+            <select class="form-control" id="mSpec" required>
+              <option value="">— Select —</option>
+              <option value="ENGINE">ENGINE</option>
+              <option value="ELECTRICAL">ELECTRICAL</option>
+              <option value="BRAKE">BRAKE</option>
+              <option value="TRANSMISSION">TRANSMISSION</option>
+              <option value="GENERAL">GENERAL</option>
+            </select>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-dismiss="modal">Cancel</button>
+      <button class="btn btn-primary" id="btnSaveMechanic">Save Mechanic</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM -->
+<div class="modal-overlay hidden" id="deleteModal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header"><span class="modal-title">Confirm Delete</span><button class="modal-close" data-dismiss="modal">×</button></div>
+    <div class="modal-body"><p>Delete mechanic <strong id="deleteMechanicName"></strong>?</p></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-dismiss="modal">Cancel</button>
+      <button class="btn btn-danger" id="btnConfirmDelete">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+(function() {
+  let allMechanics = [];
+  let editingId = null;
+  const tbody = document.getElementById('mechanicsTbody');
+  const pageAlerts  = document.getElementById('pageAlerts');
+  const modalAlerts = document.getElementById('modalAlerts');
+  const saveBtn     = document.getElementById('btnSaveMechanic');
+
+  async function loadMechanics() {
+    tableLoading(tbody, 6);
+    try {
+      allMechanics = await apiGet('/api/mechanics');
+      renderTable(allMechanics);
+    } catch(e) {
+      showAlert(pageAlerts, e.message, 'danger');
+      tableEmpty(tbody, 'Failed to load mechanics.', 6);
+    }
+  }
+
+  function renderTable(data) {
+    if (!data || data.length === 0) { tableEmpty(tbody, 'No mechanics found.', 6); return; }
+    tbody.innerHTML = data.map(m => `
+      <tr>
+        <td class="fw-600">${escHtml(m.mechanicId)}</td>
+        <td>${escHtml(m.name)}</td>
+        <td>${escHtml(m.phone)}</td>
+        <td><span class="badge badge-blue">${escHtml(m.specialization)}</span></td>
+        <td>${availabilityBadge(m.availability)}</td>
+        <td>
+          <div class="table-actions">
+            <button class="btn btn-outline btn-sm btn-icon" onclick="editMechanic(${m.mechanicId})">✏️</button>
+            <button class="btn btn-danger  btn-sm btn-icon" onclick="deleteMechanic(${m.mechanicId}, '${escHtml(m.name)}')">🗑️</button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+
+  document.getElementById('btnAddMechanic').addEventListener('click', () => {
+    editingId = null;
+    document.getElementById('mechanicModalTitle').textContent = 'Add Mechanic';
+    document.getElementById('mechanicForm').reset();
+    clearAlerts(modalAlerts);
+    openModal('mechanicModal');
+  });
+
+  saveBtn.addEventListener('click', async () => {
+    clearAlerts(modalAlerts);
+    const name = document.getElementById('mName').value.trim();
+    const phone= document.getElementById('mPhone').value.trim();
+    const spec = document.getElementById('mSpec').value;
+
+    if (!name || !phone || !spec) { showAlert(modalAlerts, 'All fields are required.', 'warning'); return; }
+
+    const payload = { name, phone, specialization: spec };
+    setLoading(saveBtn, true);
+    try {
+      if (editingId) {
+        await apiPut(`/api/mechanics/${editingId}`, payload);
+        showAlert(pageAlerts, 'Mechanic updated!', 'success');
+      } else {
+        await apiPost('/api/mechanics', payload);
+        showAlert(pageAlerts, 'Mechanic added!', 'success');
+      }
+      closeModal('mechanicModal');
+      await loadMechanics();
+    } catch(e) {
+      showAlert(modalAlerts, e.message, 'danger');
+    } finally {
+      setLoading(saveBtn, false, 'Save Mechanic');
+    }
+  });
+
+  window.editMechanic = function(id) {
+    const m = allMechanics.find(x => x.mechanicId === id);
+    if (!m) return;
+    editingId = id;
+    document.getElementById('mechanicModalTitle').textContent = 'Edit Mechanic';
+    document.getElementById('mName').value  = m.name || '';
+    document.getElementById('mPhone').value = m.phone || '';
+    document.getElementById('mSpec').value  = m.specialization || '';
+    clearAlerts(modalAlerts);
+    openModal('mechanicModal');
+  };
+
+  let pendingDeleteId = null;
+  window.deleteMechanic = function(id, name) {
+    pendingDeleteId = id;
+    document.getElementById('deleteMechanicName').textContent = name;
+    openModal('deleteModal');
+  };
+  document.getElementById('btnConfirmDelete').addEventListener('click', async () => {
+    if (!pendingDeleteId) return;
+    const btn = document.getElementById('btnConfirmDelete');
+    setLoading(btn, true, 'Delete');
+    try {
+      await apiDelete(`/api/mechanics/${pendingDeleteId}`);
+      closeModal('deleteModal');
+      showAlert(pageAlerts, 'Mechanic deleted.', 'success');
+      await loadMechanics();
+    } catch(e) {
+      closeModal('deleteModal');
+      showAlert(pageAlerts, e.message, 'danger');
+    } finally {
+      setLoading(btn, false, 'Delete');
+      pendingDeleteId = null;
+    }
+  });
+
+  document.getElementById('btnRefresh').addEventListener('click', loadMechanics);
+  loadMechanics();
+})();
+</script>
+</body>
+</html>

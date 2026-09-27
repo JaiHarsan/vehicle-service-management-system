@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Customers – Vehicle Service Management System</title>
+  <meta name="description" content="Manage customers in the Vehicle Service Management System." />
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🚗</div>
+      <div><div class="logo-text">VehicleServ</div><div class="logo-sub">Management System</div></div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Main</div>
+      <a class="nav-item" data-page="index.html" href="../index.html"><span class="nav-icon">📊</span> Dashboard</a>
+      <div class="nav-section-label">Management</div>
+      <a class="nav-item" data-page="customers.html" href="customers.html"><span class="nav-icon">👥</span> Customers</a>
+      <a class="nav-item" data-page="vehicles.html"  href="vehicles.html"><span class="nav-icon">🚙</span> Vehicles</a>
+      <a class="nav-item" data-page="mechanics.html" href="mechanics.html"><span class="nav-icon">🔧</span> Mechanics</a>
+      <a class="nav-item" data-page="services.html"  href="services.html"><span class="nav-icon">🛠️</span> Services</a>
+      <div class="nav-section-label">Operations</div>
+      <a class="nav-item" data-page="bookings.html"        href="bookings.html"><span class="nav-icon">📅</span> Bookings</a>
+      <a class="nav-item" data-page="service-records.html" href="service-records.html"><span class="nav-icon">📋</span> Service Records</a>
+      <a class="nav-item" data-page="billing.html"         href="billing.html"><span class="nav-icon">💰</span> Billing</a>
+    </nav>
+    <div class="sidebar-footer">Phase 9A &bull; Spring Boot + MySQL</div>
+  </aside>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- MAIN -->
+  <div class="main-wrapper">
+    <header class="top-header">
+      <button class="menu-toggle" id="menuToggle">☰</button>
+      <div class="header-title">Customers <span class="header-subtitle">Manage customer records</span></div>
+      <div class="header-right">
+        <div class="header-badge"><span class="status-dot"></span> Live Data</div>
+      </div>
+    </header>
+
+    <main class="page-content">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Customers</h1>
+          <p>View, add, update and remove customer records</p>
+        </div>
+        <button class="btn btn-primary" id="btnAddCustomer">+ Add Customer</button>
+      </div>
+
+      <div id="pageAlerts"></div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">👥 Customer List</span>
+          <div class="search-bar">
+            <div class="search-input-wrap">
+              <span class="search-icon">🔍</span>
+              <input type="search" class="search-input" id="customerSearch" placeholder="Search by name, email, phone…" />
+            </div>
+            <button class="btn btn-outline btn-sm" id="btnRefreshCustomers">↻</button>
+          </div>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th><th>Name</th><th>Phone</th><th>Email</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="customersTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ADD / EDIT MODAL -->
+<div class="modal-overlay hidden" id="customerModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="customerModalTitle">Add Customer</span>
+      <button class="modal-close" data-dismiss="modal">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="modalAlerts"></div>
+      <form id="customerForm" novalidate>
+        <input type="hidden" id="customerId" />
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="customerName">Full Name *</label>
+            <input class="form-control" id="customerName" name="name" required placeholder="e.g. Arun Kumar" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="customerPhone">Phone *</label>
+            <input class="form-control" id="customerPhone" name="phone" required placeholder="10-digit mobile" maxlength="15" />
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label class="form-label" for="customerEmail">Email</label>
+            <input class="form-control" id="customerEmail" name="email" type="email" placeholder="example@mail.com" />
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-dismiss="modal">Cancel</button>
+      <button class="btn btn-primary" id="btnSaveCustomer">Save Customer</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM MODAL -->
+<div class="modal-overlay hidden" id="deleteModal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header">
+      <span class="modal-title">Confirm Delete</span>
+      <button class="modal-close" data-dismiss="modal">×</button>
+    </div>
+    <div class="modal-body">
+      <p>Are you sure you want to delete customer <strong id="deleteCustomerName"></strong>? This action cannot be undone.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-dismiss="modal">Cancel</button>
+      <button class="btn btn-danger" id="btnConfirmDelete">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+(function () {
+  let allCustomers = [];
+  let editingId = null;
+
+  const tbody        = document.getElementById('customersTbody');
+  const searchInput  = document.getElementById('customerSearch');
+  const pageAlerts   = document.getElementById('pageAlerts');
+  const modalAlerts  = document.getElementById('modalAlerts');
+  const saveBtn      = document.getElementById('btnSaveCustomer');
+  const confirmDelBtn= document.getElementById('btnConfirmDelete');
+
+  async function loadCustomers() {
+    tableLoading(tbody, 5);
+    try {
+      allCustomers = await apiGet('/api/customers');
+      renderTable(allCustomers);
+    } catch (e) {
+      showAlert(pageAlerts, e.message, 'danger');
+      tableEmpty(tbody, 'Failed to load customers.', 5);
+    }
+  }
+
+  function renderTable(data) {
+    if (!data || data.length === 0) { tableEmpty(tbody, 'No customers found.', 5); return; }
+    tbody.innerHTML = data.map(c => `
+      <tr>
+        <td class="fw-600">${escHtml(c.customerId)}</td>
+        <td>${escHtml(c.name)}</td>
+        <td>${escHtml(c.phone)}</td>
+        <td>${escHtml(c.email) || '<span class="text-muted">—</span>'}</td>
+        <td>
+          <div class="table-actions">
+            <button class="btn btn-outline btn-sm btn-icon" title="Edit" onclick="editCustomer(${c.customerId})">✏️</button>
+            <button class="btn btn-danger  btn-sm btn-icon" title="Delete" onclick="deleteCustomer(${c.customerId}, '${escHtml(c.name)}')">🗑️</button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+
+  // Search filter
+  searchInput.addEventListener('input', () => {
+    const q = searchInput.value.toLowerCase();
+    const filtered = allCustomers.filter(c =>
+      (c.name  || '').toLowerCase().includes(q) ||
+      (c.email || '').toLowerCase().includes(q) ||
+      (c.phone || '').toLowerCase().includes(q)
+    );
+    renderTable(filtered);
+  });
+
+  // Add
+  document.getElementById('btnAddCustomer').addEventListener('click', () => {
+    editingId = null;
+    document.getElementById('customerModalTitle').textContent = 'Add Customer';
+    document.getElementById('customerForm').reset();
+    document.getElementById('customerId').value = '';
+    clearAlerts(modalAlerts);
+    openModal('customerModal');
+  });
+
+  // Save
+  saveBtn.addEventListener('click', async () => {
+    clearAlerts(modalAlerts);
+    const name  = document.getElementById('customerName').value.trim();
+    const phone = document.getElementById('customerPhone').value.trim();
+    const email = document.getElementById('customerEmail').value.trim();
+
+    if (!name)  { showAlert(modalAlerts, 'Name is required.', 'warning'); return; }
+    if (!phone) { showAlert(modalAlerts, 'Phone is required.', 'warning'); return; }
+
+    const payload = { name, phone, email: email || null };
+    setLoading(saveBtn, true);
+    try {
+      if (editingId) {
+        await apiPut(`/api/customers/${editingId}`, payload);
+        showAlert(pageAlerts, 'Customer updated successfully!', 'success');
+      } else {
+        await apiPost('/api/customers', payload);
+        showAlert(pageAlerts, 'Customer added successfully!', 'success');
+      }
+      closeModal('customerModal');
+      await loadCustomers();
+    } catch (e) {
+      showAlert(modalAlerts, e.message, 'danger');
+    } finally {
+      setLoading(saveBtn, false, 'Save Customer');
+    }
+  });
+
+  // Edit (global for inline onclick)
+  window.editCustomer = function(id) {
+    const c = allCustomers.find(x => x.customerId === id);
+    if (!c) return;
+    editingId = id;
+    document.getElementById('customerModalTitle').textContent = 'Edit Customer';
+    document.getElementById('customerId').value  = c.customerId;
+    document.getElementById('customerName').value  = c.name || '';
+    document.getElementById('customerPhone').value = c.phone || '';
+    document.getElementById('customerEmail').value = c.email || '';
+    clearAlerts(modalAlerts);
+    openModal('customerModal');
+  };
+
+  // Delete
+  let pendingDeleteId = null;
+  window.deleteCustomer = function(id, name) {
+    pendingDeleteId = id;
+    document.getElementById('deleteCustomerName').textContent = name;
+    openModal('deleteModal');
+  };
+  confirmDelBtn.addEventListener('click', async () => {
+    if (!pendingDeleteId) return;
+    setLoading(confirmDelBtn, true, 'Delete');
+    try {
+      await apiDelete(`/api/customers/${pendingDeleteId}`);
+      closeModal('deleteModal');
+      showAlert(pageAlerts, 'Customer deleted.', 'success');
+      await loadCustomers();
+    } catch (e) {
+      closeModal('deleteModal');
+      showAlert(pageAlerts, e.message, 'danger');
+    } finally {
+      setLoading(confirmDelBtn, false, 'Delete');
+      pendingDeleteId = null;
+    }
+  });
+
+  document.getElementById('btnRefreshCustomers').addEventListener('click', loadCustomers);
+  loadCustomers();
+})();
+</script>
+</body>
+</html>
