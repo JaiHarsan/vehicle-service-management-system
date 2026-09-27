@@ -1,21 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>Customers – Vehicle Service Management System</title>
-  <meta name="description" content="Manage customers in the Vehicle Service Management System." />
-  <link rel="stylesheet" href="../css/style.css" />
+  <meta name="description" content="Manage customers in the Vehicle Service Management System."/>
+  <link rel="stylesheet" href="../css/style.css"/>
 </head>
 <body>
 <div class="app-shell">
-
-  <!-- SIDEBAR -->
   <aside class="sidebar" id="sidebar">
-    <div class="sidebar-logo">
-      <div class="logo-icon">🚗</div>
-      <div><div class="logo-text">VehicleServ</div><div class="logo-sub">Management System</div></div>
-    </div>
+    <div class="sidebar-logo"><div class="logo-icon">🚗</div><div><div class="logo-text">VehicleServ</div><div class="logo-sub">Management System</div></div></div>
     <nav class="sidebar-nav">
       <div class="nav-section-label">Main</div>
       <a class="nav-item" data-page="index.html" href="../index.html"><span class="nav-icon">📊</span> Dashboard</a>
@@ -29,48 +24,47 @@
       <a class="nav-item" data-page="service-records.html" href="service-records.html"><span class="nav-icon">📋</span> Service Records</a>
       <a class="nav-item" data-page="billing.html"         href="billing.html"><span class="nav-icon">💰</span> Billing</a>
     </nav>
-    <div class="sidebar-footer">Phase 9A &bull; Spring Boot + MySQL</div>
+    <div class="sidebar-footer">Phase 9C &bull; Spring Boot + MySQL</div>
   </aside>
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-  <!-- MAIN -->
   <div class="main-wrapper">
     <header class="top-header">
       <button class="menu-toggle" id="menuToggle">☰</button>
       <div class="header-title">Customers <span class="header-subtitle">Manage customer records</span></div>
       <div class="header-right">
         <div class="header-badge"><span class="status-dot"></span> Live Data</div>
+        <button class="btn btn-primary" id="btnAddCustomer">+ Add Customer</button>
       </div>
     </header>
 
     <main class="page-content">
-      <div class="page-header">
-        <div class="page-header-left">
-          <h1>Customers</h1>
-          <p>View, add, update and remove customer records</p>
-        </div>
-        <button class="btn btn-primary" id="btnAddCustomer">+ Add Customer</button>
-      </div>
-
       <div id="pageAlerts"></div>
 
       <div class="card">
-        <div class="card-header">
-          <span class="card-title">👥 Customer List</span>
-          <div class="search-bar">
-            <div class="search-input-wrap">
+        <!-- Toolbar -->
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <div class="search-input-wrap" style="min-width:240px">
               <span class="search-icon">🔍</span>
-              <input type="search" class="search-input" id="customerSearch" placeholder="Search by name, email, phone…" />
+              <input type="search" class="search-input" id="searchInput" placeholder="Search by name, phone, email…" autocomplete="off"/>
             </div>
-            <button class="btn btn-outline btn-sm" id="btnRefreshCustomers">↻</button>
+            <button class="btn-clear" id="btnClear" title="Clear search" style="display:none">✕</button>
+            <span class="record-count" id="recordCount">Loading…</span>
+          </div>
+          <div class="toolbar-right">
+            <button class="btn btn-outline btn-sm" id="btnRefresh">↻ Refresh</button>
           </div>
         </div>
+
+        <div class="card-header" style="padding:14px 20px">
+          <span class="card-title">👥 Customer List</span>
+        </div>
+
         <div class="table-container">
           <table>
             <thead>
-              <tr>
-                <th>ID</th><th>Name</th><th>Phone</th><th>Email</th><th>Actions</th>
-              </tr>
+              <tr><th>#</th><th>Customer ID</th><th>Name</th><th>Phone</th><th>Email</th><th>Actions</th></tr>
             </thead>
             <tbody id="customersTbody"></tbody>
           </table>
@@ -89,44 +83,81 @@
     </div>
     <div class="modal-body">
       <div id="modalAlerts"></div>
-      <form id="customerForm" novalidate>
-        <input type="hidden" id="customerId" />
+      <form id="customerForm" novalidate autocomplete="off">
         <div class="form-grid">
           <div class="form-group">
-            <label class="form-label" for="customerName">Full Name *</label>
-            <input class="form-control" id="customerName" name="name" required placeholder="e.g. Arun Kumar" />
+            <label class="form-label" for="inputName">Full Name <span style="color:var(--danger)">*</span></label>
+            <input class="form-control" id="inputName" required placeholder="e.g. Arun Kumar" maxlength="100"/>
+            <span class="form-hint">Must be at least 2 characters</span>
           </div>
           <div class="form-group">
-            <label class="form-label" for="customerPhone">Phone *</label>
-            <input class="form-control" id="customerPhone" name="phone" required placeholder="10-digit mobile" maxlength="15" />
+            <label class="form-label" for="inputPhone">Phone Number <span style="color:var(--danger)">*</span></label>
+            <input class="form-control" id="inputPhone" required placeholder="10-digit mobile number" maxlength="10" pattern="[0-9]{10}"/>
+            <span class="form-hint">Exactly 10 digits</span>
           </div>
           <div class="form-group" style="grid-column:1/-1">
-            <label class="form-label" for="customerEmail">Email</label>
-            <input class="form-control" id="customerEmail" name="email" type="email" placeholder="example@mail.com" />
+            <label class="form-label" for="inputEmail">Email Address</label>
+            <input class="form-control" id="inputEmail" type="email" placeholder="example@mail.com" maxlength="120"/>
+            <span class="form-hint">Optional – used for notifications</span>
           </div>
         </div>
       </form>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" data-dismiss="modal">Cancel</button>
-      <button class="btn btn-primary" id="btnSaveCustomer">Save Customer</button>
+      <button class="btn btn-primary" id="btnSave">Save Customer</button>
     </div>
   </div>
 </div>
 
-<!-- DELETE CONFIRM MODAL -->
-<div class="modal-overlay hidden" id="deleteModal">
-  <div class="modal" style="max-width:380px">
+<!-- VIEW CUSTOMER VEHICLES MODAL -->
+<div class="modal-overlay hidden" id="customerVehiclesModal">
+  <div class="modal" style="max-width:700px">
     <div class="modal-header">
-      <span class="modal-title">Confirm Delete</span>
+      <span class="modal-title" id="custVehiclesTitle">Customer Vehicles</span>
       <button class="modal-close" data-dismiss="modal">×</button>
     </div>
     <div class="modal-body">
-      <p>Are you sure you want to delete customer <strong id="deleteCustomerName"></strong>? This action cannot be undone.</p>
+      <div id="custVehiclesAlerts"></div>
+      <div class="info-panel" id="custVehiclesInfo" style="margin-bottom:16px">
+        <div class="info-item"><div class="info-label">Customer</div><div class="info-value" id="cvCustName">—</div></div>
+        <div class="info-item"><div class="info-label">Customer ID</div><div class="info-value" id="cvCustId">—</div></div>
+        <div class="info-item"><div class="info-label">Total Vehicles</div><div class="info-value" id="cvCount">—</div></div>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr><th>#</th><th>Vehicle ID</th><th>Reg. Number</th><th>Brand</th><th>Model</th><th>Type</th></tr>
+          </thead>
+          <tbody id="custVehiclesTbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <a href="vehicles.html" id="cvManageLink" class="btn btn-outline" style="text-decoration:none">Manage All Vehicles →</a>
+      <button class="btn btn-primary" data-dismiss="modal">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM -->
+<div class="modal-overlay hidden" id="deleteModal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <span class="modal-title">⚠️ Confirm Deletion</span>
+      <button class="modal-close" data-dismiss="modal">×</button>
+    </div>
+    <div class="modal-body">
+      <p>You are about to permanently delete:</p>
+      <div class="info-panel" style="margin-top:12px">
+        <div class="info-item"><div class="info-label">Name</div><div class="info-value" id="delName">—</div></div>
+        <div class="info-item"><div class="info-label">Phone</div><div class="info-value" id="delPhone">—</div></div>
+      </div>
+      <p class="text-sm text-muted">This action cannot be undone.</p>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" data-dismiss="modal">Cancel</button>
-      <button class="btn btn-danger" id="btnConfirmDelete">Delete</button>
+      <button class="btn btn-danger" id="btnConfirmDelete">🗑️ Delete Customer</button>
     </div>
   </div>
 </div>
@@ -134,87 +165,157 @@
 <script src="../js/app.js"></script>
 <script>
 (function () {
+  'use strict';
   let allCustomers = [];
-  let editingId = null;
+  let editingId    = null;
+  let pendingDel   = null;
 
-  const tbody        = document.getElementById('customersTbody');
-  const searchInput  = document.getElementById('customerSearch');
-  const pageAlerts   = document.getElementById('pageAlerts');
-  const modalAlerts  = document.getElementById('modalAlerts');
-  const saveBtn      = document.getElementById('btnSaveCustomer');
-  const confirmDelBtn= document.getElementById('btnConfirmDelete');
+  const tbody       = document.getElementById('customersTbody');
+  const searchInput = document.getElementById('searchInput');
+  const btnClear    = document.getElementById('btnClear');
+  const countEl     = document.getElementById('recordCount');
+  const pageAlerts  = document.getElementById('pageAlerts');
+  const modalAlerts = document.getElementById('modalAlerts');
+  const saveBtn     = document.getElementById('btnSave');
 
-  async function loadCustomers() {
-    tableLoading(tbody, 5);
-    try {
-      allCustomers = await apiGet('/api/customers');
-      renderTable(allCustomers);
-    } catch (e) {
-      showAlert(pageAlerts, e.message, 'danger');
-      tableEmpty(tbody, 'Failed to load customers.', 5);
-    }
+  /* ---- helpers ---- */
+  function updateCount(n, total) {
+    countEl.textContent = n === total ? `${total} customer${total !== 1 ? 's' : ''}` : `${n} of ${total}`;
   }
 
+  function validate() {
+    const name  = document.getElementById('inputName').value.trim();
+    const phone = document.getElementById('inputPhone').value.trim();
+    const email = document.getElementById('inputEmail').value.trim();
+    if (!name || name.length < 2) { showAlert(modalAlerts, 'Full name must be at least 2 characters.', 'warning'); return null; }
+    if (!phone) { showAlert(modalAlerts, 'Phone number is required.', 'warning'); return null; }
+    if (!/^[0-9]{10}$/.test(phone)) { showAlert(modalAlerts, 'Phone number must be exactly 10 digits.', 'warning'); return null; }
+    if (email && !/^[A-Za-z0-9+_.-]+@.+$/.test(email)) { showAlert(modalAlerts, 'Enter a valid email address.', 'warning'); return null; }
+    return { name, phone, email: email || null };
+  }
+
+  /* ---- render ---- */
   function renderTable(data) {
-    if (!data || data.length === 0) { tableEmpty(tbody, 'No customers found.', 5); return; }
-    tbody.innerHTML = data.map(c => `
+    if (!data || data.length === 0) { tableEmpty(tbody, 'No customers found. Try a different search or add a new one.', 6); return; }
+    tbody.innerHTML = data.map((c, i) => `
       <tr>
+        <td class="text-muted text-sm">${i + 1}</td>
         <td class="fw-600">${escHtml(c.customerId)}</td>
         <td>${escHtml(c.name)}</td>
         <td>${escHtml(c.phone)}</td>
-        <td>${escHtml(c.email) || '<span class="text-muted">—</span>'}</td>
+        <td>${c.email ? escHtml(c.email) : '<span class="text-muted">—</span>'}</td>
         <td>
           <div class="table-actions">
-            <button class="btn btn-outline btn-sm btn-icon" title="Edit" onclick="editCustomer(${c.customerId})">✏️</button>
-            <button class="btn btn-danger  btn-sm btn-icon" title="Delete" onclick="deleteCustomer(${c.customerId}, '${escHtml(c.name)}')">🗑️</button>
+            <button class="btn btn-outline btn-sm" onclick="viewCustomerVehicles(${c.customerId}, '${escHtml(c.name)}')" title="View customer vehicles">🚙 Vehicles</button>
+            <button class="btn btn-outline btn-sm" onclick="editCustomer(${c.customerId})" title="Edit customer">✏️ Edit</button>
+            <button class="btn btn-danger  btn-sm" onclick="deleteCustomer(${c.customerId})" title="Delete customer">🗑️</button>
           </div>
         </td>
       </tr>`).join('');
   }
 
-  // Search filter
-  searchInput.addEventListener('input', () => {
-    const q = searchInput.value.toLowerCase();
+  /* ---- load ---- */
+  async function load() {
+    tableLoading(tbody, 6);
+    countEl.textContent = 'Loading…';
+    try {
+      allCustomers = await apiGet('/api/customers');
+      renderTable(allCustomers);
+      updateCount(allCustomers.length, allCustomers.length);
+    } catch (e) {
+      showAlert(pageAlerts, e.message, 'danger');
+      tableEmpty(tbody, 'Failed to load customers. ' + e.message, 6);
+      countEl.textContent = 'Error';
+    }
+  }
+
+  /* ---- search ---- */
+  function applyFilter() {
+    const q = searchInput.value.toLowerCase().trim();
+    btnClear.style.display = q ? 'inline-block' : 'none';
+    if (!q) { renderTable(allCustomers); updateCount(allCustomers.length, allCustomers.length); return; }
     const filtered = allCustomers.filter(c =>
       (c.name  || '').toLowerCase().includes(q) ||
-      (c.email || '').toLowerCase().includes(q) ||
-      (c.phone || '').toLowerCase().includes(q)
+      (c.phone || '').toLowerCase().includes(q) ||
+      (c.email || '').toLowerCase().includes(q)
     );
     renderTable(filtered);
-  });
+    updateCount(filtered.length, allCustomers.length);
+  }
+  searchInput.addEventListener('input', applyFilter);
+  btnClear.addEventListener('click', () => { searchInput.value = ''; applyFilter(); searchInput.focus(); });
 
-  // Add
+  /* ---- Customer Vehicles ---- */
+  window.viewCustomerVehicles = async function (customerId, customerName) {
+    const titleEl = document.getElementById('custVehiclesTitle');
+    const nameEl  = document.getElementById('cvCustName');
+    const idEl    = document.getElementById('cvCustId');
+    const countEl = document.getElementById('cvCount');
+    const tbodyEl = document.getElementById('custVehiclesTbody');
+    const alertsEl= document.getElementById('custVehiclesAlerts');
+    const linkEl  = document.getElementById('cvManageLink');
+
+    titleEl.textContent = `Vehicles of ${customerName}`;
+    nameEl.textContent = customerName;
+    idEl.textContent = customerId;
+    countEl.textContent = 'Loading…';
+    linkEl.href = `vehicles.html?customerId=${customerId}`;
+    clearAlerts(alertsEl);
+    tableLoading(tbodyEl, 6);
+    openModal('customerVehiclesModal');
+
+    try {
+      const vehicles = await apiGet(`/api/vehicles?customerId=${customerId}`);
+      countEl.textContent = vehicles.length;
+      if (!vehicles || vehicles.length === 0) {
+        tableEmpty(tbodyEl, 'No vehicles registered for this customer yet.', 6);
+      } else {
+        tbodyEl.innerHTML = vehicles.map((v, i) => `
+          <tr>
+            <td class="text-muted text-sm">${i + 1}</td>
+            <td class="fw-600">${escHtml(v.vehicleId)}</td>
+            <td><span class="badge badge-blue">${escHtml(v.registrationNumber)}</span></td>
+            <td>${escHtml(v.brand)}</td>
+            <td>${escHtml(v.model)}</td>
+            <td><span class="badge badge-gray">${escHtml(v.vehicleType)}</span></td>
+          </tr>`).join('');
+      }
+    } catch (e) {
+      countEl.textContent = 'Error';
+      showAlert(alertsEl, 'Failed to load vehicles: ' + e.message, 'danger');
+      tableEmpty(tbodyEl, 'Unable to load vehicles.', 6);
+    }
+  };
+
+  /* ---- Add ---- */
   document.getElementById('btnAddCustomer').addEventListener('click', () => {
     editingId = null;
-    document.getElementById('customerModalTitle').textContent = 'Add Customer';
-    document.getElementById('customerForm').reset();
-    document.getElementById('customerId').value = '';
+    document.getElementById('customerModalTitle').textContent = 'Add New Customer';
+    document.getElementById('inputName').value  = '';
+    document.getElementById('inputPhone').value = '';
+    document.getElementById('inputEmail').value = '';
     clearAlerts(modalAlerts);
     openModal('customerModal');
+    document.getElementById('inputName').focus();
   });
 
-  // Save
+  /* ---- Save ---- */
   saveBtn.addEventListener('click', async () => {
     clearAlerts(modalAlerts);
-    const name  = document.getElementById('customerName').value.trim();
-    const phone = document.getElementById('customerPhone').value.trim();
-    const email = document.getElementById('customerEmail').value.trim();
-
-    if (!name)  { showAlert(modalAlerts, 'Name is required.', 'warning'); return; }
-    if (!phone) { showAlert(modalAlerts, 'Phone is required.', 'warning'); return; }
-
-    const payload = { name, phone, email: email || null };
-    setLoading(saveBtn, true);
+    const payload = validate();
+    if (!payload) return;
+    setLoading(saveBtn, true, 'Save Customer');
     try {
       if (editingId) {
         await apiPut(`/api/customers/${editingId}`, payload);
-        showAlert(pageAlerts, 'Customer updated successfully!', 'success');
+        showAlert(pageAlerts, `✅ Customer "${payload.name}" updated successfully.`, 'success');
       } else {
         await apiPost('/api/customers', payload);
-        showAlert(pageAlerts, 'Customer added successfully!', 'success');
+        showAlert(pageAlerts, `✅ Customer "${payload.name}" added successfully.`, 'success');
       }
       closeModal('customerModal');
-      await loadCustomers();
+      searchInput.value = '';
+      await load();
     } catch (e) {
       showAlert(modalAlerts, e.message, 'danger');
     } finally {
@@ -222,46 +323,53 @@
     }
   });
 
-  // Edit (global for inline onclick)
-  window.editCustomer = function(id) {
+  /* ---- Edit ---- */
+  window.editCustomer = function (id) {
     const c = allCustomers.find(x => x.customerId === id);
     if (!c) return;
     editingId = id;
     document.getElementById('customerModalTitle').textContent = 'Edit Customer';
-    document.getElementById('customerId').value  = c.customerId;
-    document.getElementById('customerName').value  = c.name || '';
-    document.getElementById('customerPhone').value = c.phone || '';
-    document.getElementById('customerEmail').value = c.email || '';
+    document.getElementById('inputName').value  = c.name  || '';
+    document.getElementById('inputPhone').value = c.phone || '';
+    document.getElementById('inputEmail').value = c.email || '';
     clearAlerts(modalAlerts);
     openModal('customerModal');
   };
 
-  // Delete
-  let pendingDeleteId = null;
-  window.deleteCustomer = function(id, name) {
-    pendingDeleteId = id;
-    document.getElementById('deleteCustomerName').textContent = name;
+  /* ---- Delete ---- */
+  window.deleteCustomer = function (id) {
+    const c = allCustomers.find(x => x.customerId === id);
+    if (!c) return;
+    pendingDel = id;
+    document.getElementById('delName').textContent  = c.name  || '—';
+    document.getElementById('delPhone').textContent = c.phone || '—';
     openModal('deleteModal');
   };
-  confirmDelBtn.addEventListener('click', async () => {
-    if (!pendingDeleteId) return;
-    setLoading(confirmDelBtn, true, 'Delete');
+  document.getElementById('btnConfirmDelete').addEventListener('click', async () => {
+    if (!pendingDel) return;
+    const btn = document.getElementById('btnConfirmDelete');
+    setLoading(btn, true, '🗑️ Delete Customer');
     try {
-      await apiDelete(`/api/customers/${pendingDeleteId}`);
+      await apiDelete(`/api/customers/${pendingDel}`);
       closeModal('deleteModal');
-      showAlert(pageAlerts, 'Customer deleted.', 'success');
-      await loadCustomers();
+      showAlert(pageAlerts, 'Customer deleted successfully.', 'success');
+      await load();
     } catch (e) {
       closeModal('deleteModal');
       showAlert(pageAlerts, e.message, 'danger');
     } finally {
-      setLoading(confirmDelBtn, false, 'Delete');
-      pendingDeleteId = null;
+      setLoading(btn, false, '🗑️ Delete Customer');
+      pendingDel = null;
     }
   });
 
-  document.getElementById('btnRefreshCustomers').addEventListener('click', loadCustomers);
-  loadCustomers();
+  /* ---- keyboard submit ---- */
+  document.getElementById('customerForm').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); saveBtn.click(); }
+  });
+
+  document.getElementById('btnRefresh').addEventListener('click', load);
+  load();
 })();
 </script>
 </body>

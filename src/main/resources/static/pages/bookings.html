@@ -23,31 +23,74 @@
       <a class="nav-item" data-page="service-records.html" href="service-records.html"><span class="nav-icon">📋</span> Service Records</a>
       <a class="nav-item" data-page="billing.html"         href="billing.html"><span class="nav-icon">💰</span> Billing</a>
     </nav>
-    <div class="sidebar-footer">Phase 9A &bull; Spring Boot + MySQL</div>
+    <div class="sidebar-footer">Phase 9E &bull; Spring Boot + MySQL</div>
   </aside>
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
   <div class="main-wrapper">
     <header class="top-header">
       <button class="menu-toggle" id="menuToggle">☰</button>
-      <div class="header-title">Bookings <span class="header-subtitle">Service appointments</span></div>
-      <div class="header-right"><div class="header-badge"><span class="status-dot"></span> Live Data</div></div>
+      <div class="header-title">Bookings <span class="header-subtitle">Service appointments &amp; workflow</span></div>
+      <div class="header-right">
+        <div class="header-badge"><span class="status-dot"></span> Live Data</div>
+        <button class="btn btn-primary" id="btnNewBooking">+ New Booking</button>
+      </div>
     </header>
 
     <main class="page-content">
-      <div class="page-header">
-        <div class="page-header-left"><h1>Service Bookings</h1><p>Create and manage vehicle service appointments</p></div>
-        <button class="btn btn-primary" id="btnNewBooking">+ New Booking</button>
-      </div>
       <div id="pageAlerts"></div>
+
+      <!-- Workflow indicator overview -->
+      <div class="card mb-16">
+        <div class="workflow-steps">
+          <div class="workflow-step"><div class="step-dot active">1</div><div class="step-label">BOOKED</div></div>
+          <div class="step-connector"></div>
+          <div class="workflow-step"><div class="step-dot">2</div><div class="step-label">ASSIGNED</div></div>
+          <div class="step-connector"></div>
+          <div class="workflow-step"><div class="step-dot">3</div><div class="step-label">IN PROGRESS</div></div>
+          <div class="step-connector"></div>
+          <div class="workflow-step"><div class="step-dot">4</div><div class="step-label">COMPLETED</div></div>
+          <div class="step-connector"></div>
+          <div class="workflow-step"><div class="step-dot">5</div><div class="step-label">RECORD</div></div>
+          <div class="step-connector"></div>
+          <div class="workflow-step"><div class="step-dot">6</div><div class="step-label">BILL</div></div>
+        </div>
+      </div>
+
       <div class="card">
-        <div class="card-header">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <div class="search-input-wrap" style="min-width:240px">
+              <span class="search-icon">🔍</span>
+              <input type="search" class="search-input" id="searchInput" placeholder="Search by ID, vehicle, service, mechanic, notes…"/>
+            </div>
+            <button class="btn-clear" id="btnClear" title="Clear filters" style="display:none">✕</button>
+            <select class="filter-select" id="filterStatus">
+              <option value="">All Statuses</option>
+              <option value="BOOKED">BOOKED</option>
+              <option value="ASSIGNED">ASSIGNED</option>
+              <option value="IN_PROGRESS">IN PROGRESS</option>
+              <option value="COMPLETED">COMPLETED</option>
+              <option value="CANCELLED">CANCELLED</option>
+            </select>
+            <span class="record-count" id="recordCount">Loading…</span>
+          </div>
+          <div class="toolbar-right">
+            <button class="btn btn-outline btn-sm" id="btnRefresh">↻ Refresh</button>
+          </div>
+        </div>
+
+        <div class="card-header" style="padding:14px 20px">
           <span class="card-title">📅 All Bookings</span>
-          <button class="btn btn-outline btn-sm" id="btnRefresh">↻ Refresh</button>
         </div>
         <div class="table-container">
-          <table>
-            <thead><tr><th>ID</th><th>Vehicle ID</th><th>Service ID</th><th>Mechanic ID</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+          <table id="bookingsTable">
+            <thead>
+              <tr>
+                <th>Booking ID</th><th>Vehicle</th><th>Service</th><th>Mechanic</th>
+                <th>Service Date</th><th>Status</th><th>Actions</th>
+              </tr>
+            </thead>
             <tbody id="bookingsTbody"></tbody>
           </table>
         </div>
@@ -58,30 +101,37 @@
 
 <!-- NEW BOOKING MODAL -->
 <div class="modal-overlay hidden" id="bookingModal">
-  <div class="modal">
+  <div class="modal" style="max-width:600px">
     <div class="modal-header">
-      <span class="modal-title">New Booking</span>
+      <span class="modal-title">📅 Create New Booking</span>
       <button class="modal-close" data-dismiss="modal">×</button>
     </div>
     <div class="modal-body">
       <div id="modalAlerts"></div>
-      <form id="bookingForm" novalidate>
+      <form id="bookingForm" novalidate autocomplete="off">
         <div class="form-grid">
           <div class="form-group">
-            <label class="form-label" for="bVehicleId">Vehicle ID *</label>
-            <input class="form-control" id="bVehicleId" required type="number" min="1" placeholder="e.g. 101" />
+            <label class="form-label" for="bVehicle">Vehicle <span style="color:var(--danger)">*</span></label>
+            <select class="form-control" id="bVehicle" required>
+              <option value="">— Loading vehicles… —</option>
+            </select>
+            <span class="form-hint">Select the vehicle needing service</span>
           </div>
           <div class="form-group">
-            <label class="form-label" for="bServiceId">Service ID *</label>
-            <input class="form-control" id="bServiceId" required type="number" min="1" placeholder="e.g. 301" />
+            <label class="form-label" for="bService">Service Offering <span style="color:var(--danger)">*</span></label>
+            <select class="form-control" id="bService" required>
+              <option value="">— Loading services… —</option>
+            </select>
+            <span class="form-hint">Catalog service to perform</span>
           </div>
           <div class="form-group">
-            <label class="form-label" for="bDate">Service Date *</label>
-            <input class="form-control" id="bDate" required type="date" />
+            <label class="form-label" for="bDate">Service Date <span style="color:var(--danger)">*</span></label>
+            <input class="form-control" id="bDate" required type="date"/>
+            <span class="form-hint">Scheduled date of service</span>
           </div>
           <div class="form-group" style="grid-column:1/-1">
-            <label class="form-label" for="bDesc">Description</label>
-            <textarea class="form-control" id="bDesc" rows="2" placeholder="Optional notes…"></textarea>
+            <label class="form-label" for="bDesc">Description / Symptoms / Notes</label>
+            <textarea class="form-control" id="bDesc" rows="2" placeholder="Optional notes describing issues or customer requests…" maxlength="300"></textarea>
           </div>
         </div>
       </form>
@@ -95,150 +145,354 @@
 
 <!-- ASSIGN MECHANIC MODAL -->
 <div class="modal-overlay hidden" id="assignModal">
-  <div class="modal" style="max-width:380px">
+  <div class="modal" style="max-width:440px">
     <div class="modal-header">
-      <span class="modal-title">Assign Mechanic</span>
+      <span class="modal-title">🔧 Assign Mechanic – Booking #<span id="assignBookingId"></span></span>
       <button class="modal-close" data-dismiss="modal">×</button>
     </div>
     <div class="modal-body">
       <div id="assignAlerts"></div>
       <div class="form-group">
-        <label class="form-label" for="assignMechanicId">Mechanic ID *</label>
-        <input class="form-control" id="assignMechanicId" type="number" min="1" placeholder="e.g. 201" />
+        <label class="form-label" for="assignMechanicSel">Select Available Mechanic <span style="color:var(--danger)">*</span></label>
+        <select class="form-control" id="assignMechanicSel" required>
+          <option value="">— Loading mechanics… —</option>
+        </select>
+        <span class="form-hint">Only AVAILABLE mechanics can be assigned</span>
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" data-dismiss="modal">Cancel</button>
-      <button class="btn btn-primary" id="btnConfirmAssign">Assign</button>
+      <button class="btn btn-primary" id="btnConfirmAssign">Assign Mechanic</button>
+    </div>
+  </div>
+</div>
+
+<!-- CANCEL CONFIRM -->
+<div class="modal-overlay hidden" id="cancelModal">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header"><span class="modal-title">⚠️ Confirm Cancellation</span><button class="modal-close" data-dismiss="modal">×</button></div>
+    <div class="modal-body">
+      <p>Are you sure you want to cancel this booking?</p>
+      <div class="info-panel" style="margin-top:12px; margin-bottom:12px">
+        <div class="info-item"><div class="info-label">Booking ID</div><div class="info-value" id="cancelBookingId">—</div></div>
+        <div class="info-item"><div class="info-label">Status</div><div class="info-value" id="cancelStatus">—</div></div>
+        <div class="info-item"><div class="info-label">Vehicle</div><div class="info-value" id="cancelVehicle">—</div></div>
+        <div class="info-item"><div class="info-label">Service</div><div class="info-value" id="cancelService">—</div></div>
+      </div>
+      <p class="text-sm text-muted">Any assigned mechanic will be released back to AVAILABLE.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-dismiss="modal">Keep Booking</button>
+      <button class="btn btn-danger" id="btnConfirmCancel">Cancel Booking</button>
+    </div>
+  </div>
+</div>
+
+<!-- BOOKING DETAIL MODAL -->
+<div class="modal-overlay hidden" id="detailModal">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <span class="modal-title">Booking Detail – #<span id="detailBookingId"></span></span>
+      <button class="modal-close" data-dismiss="modal">×</button>
+    </div>
+    <div class="modal-body" id="detailModalBody">Loading…</div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-dismiss="modal">Close</button>
     </div>
   </div>
 </div>
 
 <script src="../js/app.js"></script>
 <script>
-(function() {
-  let allBookings = [];
-  const tbody = document.getElementById('bookingsTbody');
+(function () {
+  'use strict';
+  let allBookings  = [];
+  let allVehicles  = [];
+  let allServices  = [];
+  let allMechanics = [];
+  let pendingCancel= null;
+  let pendingAssign= null;
+
+  const tbody       = document.getElementById('bookingsTbody');
+  const searchInput = document.getElementById('searchInput');
+  const filterStatus= document.getElementById('filterStatus');
+  const btnClear    = document.getElementById('btnClear');
+  const countEl     = document.getElementById('recordCount');
   const pageAlerts  = document.getElementById('pageAlerts');
   const modalAlerts = document.getElementById('modalAlerts');
   const saveBtn     = document.getElementById('btnSaveBooking');
-  let pendingAssignId = null;
 
-  async function loadBookings() {
-    tableLoading(tbody, 7);
-    try {
-      allBookings = await apiGet('/api/bookings');
-      renderTable(allBookings);
-    } catch(e) {
-      showAlert(pageAlerts, e.message, 'danger');
-      tableEmpty(tbody, 'Failed to load bookings.', 7);
-    }
+  function updateCount(n, t) { countEl.textContent = n === t ? `${t} booking${t !== 1 ? 's' : ''}` : `${n} of ${t}`; }
+
+  function vehicleLabel(id) {
+    const v = allVehicles.find(x => x.vehicleId === id);
+    return v ? `${escHtml(v.registrationNumber)} (${escHtml(v.brand)} ${escHtml(v.model)})` : `Vehicle #${id}`;
+  }
+  function serviceLabel(id) {
+    const s = allServices.find(x => x.serviceId === id);
+    return s ? escHtml(s.serviceName) : `Service #${id}`;
+  }
+  function mechanicLabel(id) {
+    if (!id) return '<span class="text-muted">—</span>';
+    const m = allMechanics.find(x => x.mechanicId === id);
+    return m ? escHtml(m.name) : `Mechanic #${id}`;
+  }
+  function mechanicNameOnly(id) {
+    if (!id) return '';
+    const m = allMechanics.find(x => x.mechanicId === id);
+    return m ? m.name : '';
   }
 
   function actionButtons(b) {
     const btns = [];
-    if (b.status === 'BOOKED')
-      btns.push(`<button class="btn btn-outline btn-sm" onclick="openAssign(${b.bookingId})">Assign Mechanic</button>`);
-    if (b.status === 'ASSIGNED')
-      btns.push(`<button class="btn btn-warning btn-sm" onclick="startService(${b.bookingId})">Start</button>`);
-    if (b.status === 'IN_PROGRESS')
-      btns.push(`<button class="btn btn-success btn-sm" onclick="completeBooking(${b.bookingId})">Complete</button>`);
-    if (b.status !== 'COMPLETED' && b.status !== 'CANCELLED')
-      btns.push(`<button class="btn btn-danger btn-sm" onclick="cancelBooking(${b.bookingId})">Cancel</button>`);
-    return `<div class="table-actions" style="flex-wrap:wrap">${btns.join('')}</div>`;
+    if (b.status === 'BOOKED') {
+      btns.push(`<button class="btn btn-outline btn-sm" onclick="openAssign(${b.bookingId})" title="Assign available mechanic">🔧 Assign</button>`);
+    }
+    if (b.status === 'ASSIGNED') {
+      btns.push(`<button class="btn btn-warning btn-sm" onclick="startService(${b.bookingId})" title="Start service work">▶ Start</button>`);
+    }
+    if (b.status === 'IN_PROGRESS') {
+      btns.push(`<button class="btn btn-success btn-sm" onclick="completeBooking(${b.bookingId})" title="Complete service work">✔ Complete</button>`);
+    }
+    if (b.status !== 'COMPLETED' && b.status !== 'CANCELLED') {
+      btns.push(`<button class="btn btn-danger btn-sm" onclick="openCancel(${b.bookingId})" title="Cancel booking">✕ Cancel</button>`);
+    }
+    btns.push(`<button class="btn btn-outline btn-sm" onclick="viewDetail(${b.bookingId})" title="View full booking details">👁 Detail</button>`);
+    return `<div class="table-actions" style="flex-wrap:wrap; gap:4px">${btns.join('')}</div>`;
   }
 
   function renderTable(data) {
-    if (!data || data.length === 0) { tableEmpty(tbody, 'No bookings found.', 7); return; }
+    if (!data || data.length === 0) { tableEmpty(tbody, 'No bookings found matching current filters.', 7); return; }
     tbody.innerHTML = data.slice().reverse().map(b => `
       <tr>
         <td class="fw-600">#${escHtml(b.bookingId)}</td>
-        <td>V-${escHtml(b.vehicleId)}</td>
-        <td>S-${escHtml(b.serviceId)}</td>
-        <td>${b.mechanicId ? 'M-'+escHtml(b.mechanicId) : '<span class="text-muted">—</span>'}</td>
+        <td>${vehicleLabel(b.vehicleId)}</td>
+        <td>${serviceLabel(b.serviceId)}</td>
+        <td>${mechanicLabel(b.mechanicId)}</td>
         <td>${formatDate(b.serviceDate)}</td>
         <td>${bookingStatusBadge(b.status)}</td>
         <td>${actionButtons(b)}</td>
       </tr>`).join('');
   }
 
-  // New Booking
+  function applyFilter() {
+    const q   = searchInput.value.toLowerCase().trim();
+    const sta = filterStatus.value;
+    btnClear.style.display = (q || sta) ? 'inline-block' : 'none';
+    let d = allBookings;
+    if (q) {
+      d = d.filter(b => {
+        const bId   = String(b.bookingId);
+        const vText = vehicleLabel(b.vehicleId).toLowerCase();
+        const sText = serviceLabel(b.serviceId).toLowerCase();
+        const mText = (mechanicNameOnly(b.mechanicId) || '').toLowerCase();
+        const desc  = (b.description || '').toLowerCase();
+        return bId.includes(q) || vText.includes(q) || sText.includes(q) || mText.includes(q) || desc.includes(q);
+      });
+    }
+    if (sta) d = d.filter(b => b.status === sta);
+    renderTable(d);
+    updateCount(d.length, allBookings.length);
+  }
+  searchInput.addEventListener('input', applyFilter);
+  filterStatus.addEventListener('change', applyFilter);
+  btnClear.addEventListener('click', () => {
+    searchInput.value = '';
+    filterStatus.value = '';
+    applyFilter();
+    searchInput.focus();
+  });
+
+  async function load() {
+    tableLoading(tbody, 7);
+    try {
+      [allBookings, allVehicles, allServices, allMechanics] = await Promise.all([
+        apiGet('/api/bookings'),
+        apiGet('/api/vehicles'),
+        apiGet('/api/services'),
+        apiGet('/api/mechanics')
+      ]);
+      renderTable(allBookings);
+      updateCount(allBookings.length, allBookings.length);
+    } catch (e) {
+      showAlert(pageAlerts, e.message, 'danger');
+      tableEmpty(tbody, 'Failed to load bookings. ' + e.message, 7);
+    }
+  }
+
+  /* ---- new booking ---- */
   document.getElementById('btnNewBooking').addEventListener('click', () => {
     document.getElementById('bookingForm').reset();
-    document.getElementById('bDate').value = new Date().toISOString().slice(0,10);
+    document.getElementById('bDate').value = new Date().toISOString().slice(0, 10);
+    // Populate dropdowns
+    const vSel = document.getElementById('bVehicle');
+    vSel.innerHTML = '<option value="">— Select Vehicle —</option>' +
+      allVehicles.map(v => `<option value="${v.vehicleId}">${escHtml(v.registrationNumber)} – ${escHtml(v.brand)} ${escHtml(v.model)} (${escHtml(v.vehicleType)})</option>`).join('');
+    const sSel = document.getElementById('bService');
+    sSel.innerHTML = '<option value="">— Select Service —</option>' +
+      allServices.map(s => `<option value="${s.serviceId}">${escHtml(s.serviceName)} – ${formatCurrency(s.basePrice)}</option>`).join('');
     clearAlerts(modalAlerts);
     openModal('bookingModal');
   });
 
   saveBtn.addEventListener('click', async () => {
     clearAlerts(modalAlerts);
-    const vid  = document.getElementById('bVehicleId').value.trim();
-    const sid  = document.getElementById('bServiceId').value.trim();
+    const vid  = document.getElementById('bVehicle').value;
+    const sid  = document.getElementById('bService').value;
     const date = document.getElementById('bDate').value;
     const desc = document.getElementById('bDesc').value.trim();
-    if (!vid || !sid || !date) { showAlert(modalAlerts, 'Vehicle ID, Service ID and date are required.', 'warning'); return; }
+
+    if (!vid)  { showAlert(modalAlerts, 'Please select a vehicle.', 'warning'); return; }
+    if (!sid)  { showAlert(modalAlerts, 'Please select a service offering.', 'warning'); return; }
+    if (!date) { showAlert(modalAlerts, 'Please specify a service date.', 'warning'); return; }
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (date < todayStr) {
+      showAlert(modalAlerts, 'Service date cannot be in the past.', 'warning');
+      return;
+    }
+
     setLoading(saveBtn, true, 'Create Booking');
     try {
-      await apiPost('/api/bookings', { vehicleId: parseInt(vid), serviceId: parseInt(sid), serviceDate: date, description: desc || null });
+      const payload = {
+        vehicleId: parseInt(vid, 10),
+        serviceId: parseInt(sid, 10),
+        serviceDate: date,
+        description: desc || null
+      };
+      await apiPost('/api/bookings', payload);
       closeModal('bookingModal');
-      showAlert(pageAlerts, 'Booking created successfully!', 'success');
-      await loadBookings();
-    } catch(e) {
+      showAlert(pageAlerts, '✅ Service Booking created successfully!', 'success');
+      await load();
+      applyFilter();
+    } catch (e) {
       showAlert(modalAlerts, e.message, 'danger');
     } finally {
       setLoading(saveBtn, false, 'Create Booking');
     }
   });
 
-  // Assign mechanic
-  window.openAssign = function(id) {
-    pendingAssignId = id;
-    document.getElementById('assignMechanicId').value = '';
+  /* ---- assign mechanic ---- */
+  window.openAssign = function (id) {
+    pendingAssign = id;
+    document.getElementById('assignBookingId').textContent = id;
+    const sel = document.getElementById('assignMechanicSel');
+    const avail = allMechanics.filter(m => m.availability === 'AVAILABLE');
+    if (avail.length === 0) {
+      sel.innerHTML = '<option value="">No available mechanics at this time</option>';
+    } else {
+      sel.innerHTML = '<option value="">— Select Available Mechanic —</option>' +
+        avail.map(m => `<option value="${m.mechanicId}">${escHtml(m.name)} (ID: #${m.mechanicId}, ${escHtml(m.specialization)})</option>`).join('');
+    }
     clearAlerts(document.getElementById('assignAlerts'));
     openModal('assignModal');
   };
+
   document.getElementById('btnConfirmAssign').addEventListener('click', async () => {
-    const mid = document.getElementById('assignMechanicId').value.trim();
-    if (!mid) { showAlert(document.getElementById('assignAlerts'), 'Mechanic ID required.', 'warning'); return; }
+    const mid = document.getElementById('assignMechanicSel').value;
+    if (!mid) { showAlert(document.getElementById('assignAlerts'), 'Please select a mechanic.', 'warning'); return; }
     const btn = document.getElementById('btnConfirmAssign');
-    setLoading(btn, true, 'Assign');
+    setLoading(btn, true, 'Assign Mechanic');
     try {
-      await apiPut(`/api/bookings/${pendingAssignId}/assign?mechanicId=${mid}`);
+      await apiPut(`/api/bookings/${pendingAssign}/assign?mechanicId=${mid}`);
       closeModal('assignModal');
-      showAlert(pageAlerts, 'Mechanic assigned!', 'success');
-      await loadBookings();
-    } catch(e) {
+      showAlert(pageAlerts, `✅ Mechanic assigned successfully to booking #${pendingAssign}! Status is now ASSIGNED.`, 'success');
+      await load();
+      applyFilter();
+    } catch (e) {
       showAlert(document.getElementById('assignAlerts'), e.message, 'danger');
     } finally {
-      setLoading(btn, false, 'Assign');
+      setLoading(btn, false, 'Assign Mechanic');
+      pendingAssign = null;
     }
   });
 
-  window.startService = async function(id) {
+  /* ---- start / complete ---- */
+  window.startService = async function (id) {
     try {
       await apiPut(`/api/bookings/${id}/start`);
-      showAlert(pageAlerts, 'Service started!', 'success');
-      await loadBookings();
-    } catch(e) { showAlert(pageAlerts, e.message, 'danger'); }
-  };
-  window.completeBooking = async function(id) {
-    try {
-      await apiPut(`/api/bookings/${id}/complete`);
-      showAlert(pageAlerts, 'Booking completed!', 'success');
-      await loadBookings();
-    } catch(e) { showAlert(pageAlerts, e.message, 'danger'); }
-  };
-  window.cancelBooking = async function(id) {
-    if (!confirm('Cancel this booking?')) return;
-    try {
-      await apiPut(`/api/bookings/${id}/cancel`);
-      showAlert(pageAlerts, 'Booking cancelled.', 'info');
-      await loadBookings();
-    } catch(e) { showAlert(pageAlerts, e.message, 'danger'); }
+      showAlert(pageAlerts, `▶ Service started for booking #${id}! Status is now IN_PROGRESS.`, 'success');
+      await load();
+      applyFilter();
+    } catch (e) {
+      showAlert(pageAlerts, 'Cannot start service: ' + e.message, 'danger');
+    }
   };
 
-  document.getElementById('btnRefresh').addEventListener('click', loadBookings);
-  loadBookings();
+  window.completeBooking = async function (id) {
+    try {
+      await apiPut(`/api/bookings/${id}/complete`);
+      showAlert(pageAlerts, `✔ Booking #${id} completed successfully! Assigned mechanic has been released. You can now create a Service Record in the Service Records page.`, 'success', 8000);
+      await load();
+      applyFilter();
+    } catch (e) {
+      showAlert(pageAlerts, 'Cannot complete booking: ' + e.message, 'danger');
+    }
+  };
+
+  /* ---- cancel ---- */
+  window.openCancel = function (id) {
+    const b = allBookings.find(x => x.bookingId === id);
+    if (!b) return;
+    pendingCancel = id;
+    document.getElementById('cancelBookingId').textContent = '#' + b.bookingId;
+    document.getElementById('cancelStatus').innerHTML = bookingStatusBadge(b.status);
+    document.getElementById('cancelVehicle').textContent = vehicleLabel(b.vehicleId);
+    document.getElementById('cancelService').textContent = serviceLabel(b.serviceId);
+    openModal('cancelModal');
+  };
+
+  document.getElementById('btnConfirmCancel').addEventListener('click', async () => {
+    if (!pendingCancel) return;
+    const btn = document.getElementById('btnConfirmCancel');
+    setLoading(btn, true, 'Cancel Booking');
+    try {
+      await apiPut(`/api/bookings/${pendingCancel}/cancel`);
+      closeModal('cancelModal');
+      showAlert(pageAlerts, `Booking #${pendingCancel} has been cancelled. Any assigned mechanic is released back to AVAILABLE.`, 'info');
+      await load();
+      applyFilter();
+    } catch (e) {
+      closeModal('cancelModal');
+      showAlert(pageAlerts, 'Cannot cancel booking: ' + e.message, 'danger');
+    } finally {
+      setLoading(btn, false, 'Cancel Booking');
+      pendingCancel = null;
+    }
+  });
+
+  /* ---- detail view ---- */
+  window.viewDetail = function (id) {
+    const b = allBookings.find(x => x.bookingId === id);
+    if (!b) return;
+    document.getElementById('detailBookingId').textContent = id;
+    const v = allVehicles.find(x => x.vehicleId === b.vehicleId);
+    const s = allServices.find(x => x.serviceId === b.serviceId);
+    const m = allMechanics.find(x => x.mechanicId === b.mechanicId);
+
+    const stepOrder = { 'BOOKED': 1, 'ASSIGNED': 2, 'IN_PROGRESS': 3, 'COMPLETED': 4 };
+    const curStep = stepOrder[b.status] || 0;
+
+    document.getElementById('detailModalBody').innerHTML = `
+      <div class="info-panel">
+        <div class="info-item"><div class="info-label">Booking ID</div><div class="info-value">#${escHtml(b.bookingId)}</div></div>
+        <div class="info-item"><div class="info-label">Status</div><div class="info-value">${bookingStatusBadge(b.status)}</div></div>
+        <div class="info-item"><div class="info-label">Service Date</div><div class="info-value">${formatDate(b.serviceDate)}</div></div>
+        <div class="info-item"><div class="info-label">Service Name</div><div class="info-value">${s ? escHtml(s.serviceName) : `Service #${b.serviceId}`}</div></div>
+        <div class="info-item"><div class="info-label">Base Price</div><div class="info-value" style="color:var(--success)">${s ? formatCurrency(s.basePrice) : '—'}</div></div>
+        <div class="info-item"><div class="info-label">Vehicle Reg</div><div class="info-value">${v ? `<span class="badge badge-blue">${escHtml(v.registrationNumber)}</span>` : `Vehicle #${b.vehicleId}`}</div></div>
+        <div class="info-item"><div class="info-label">Vehicle Info</div><div class="info-value">${v ? `${escHtml(v.brand)} ${escHtml(v.model)} (${escHtml(v.vehicleType)})` : '—'}</div></div>
+        <div class="info-item"><div class="info-label">Assigned Mechanic</div><div class="info-value">${m ? `${escHtml(m.name)} (#${m.mechanicId})` : '<span class="text-muted">Not yet assigned</span>'}</div></div>
+      </div>
+      ${b.description ? `<div style="background:#f8fafc; border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px; margin-bottom:14px"><span class="fw-600 text-sm">Notes / Symptoms:</span> <p class="text-sm text-muted" style="margin-top:4px">${escHtml(b.description)}</p></div>` : ''}
+      ${b.status === 'COMPLETED' ? '<div class="alert alert-success" style="margin-top:12px"><span class="alert-icon">✅</span><span>This booking is completed! You can now generate a <a href="service-records.html" style="font-weight:700">Service Record</a> for it.</span></div>' : ''}
+      ${b.status === 'CANCELLED' ? '<div class="alert alert-warning" style="margin-top:12px"><span class="alert-icon">⚠️</span><span>This booking was cancelled. No further actions can be performed.</span></div>' : ''}
+    `;
+    openModal('detailModal');
+  };
+
+  document.getElementById('btnRefresh').addEventListener('click', load);
+  load();
 })();
 </script>
 </body>

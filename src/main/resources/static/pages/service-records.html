@@ -23,28 +23,64 @@
       <a class="nav-item" data-page="service-records.html" href="service-records.html"><span class="nav-icon">📋</span> Service Records</a>
       <a class="nav-item" data-page="billing.html"         href="billing.html"><span class="nav-icon">💰</span> Billing</a>
     </nav>
-    <div class="sidebar-footer">Phase 9A &bull; Spring Boot + MySQL</div>
+    <div class="sidebar-footer">Phase 9F &bull; Spring Boot + MySQL</div>
   </aside>
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
   <div class="main-wrapper">
     <header class="top-header">
       <button class="menu-toggle" id="menuToggle">☰</button>
-      <div class="header-title">Service Records <span class="header-subtitle">Post-service documentation</span></div>
-      <div class="header-right"><div class="header-badge"><span class="status-dot"></span> Live Data</div></div>
+      <div class="header-title">Service Records <span class="header-subtitle">Post-service documentation &amp; history</span></div>
+      <div class="header-right">
+        <div class="header-badge"><span class="status-dot"></span> Live Data</div>
+        <button class="btn btn-primary" id="btnAddRecord">+ Add Record</button>
+      </div>
     </header>
 
     <main class="page-content">
-      <div class="page-header">
-        <div class="page-header-left"><h1>Service Records</h1><p>Record and view completed service details</p></div>
-        <button class="btn btn-primary" id="btnAddRecord">+ Add Record</button>
-      </div>
       <div id="pageAlerts"></div>
-      <div class="card">
+
+      <!-- Vehicle History Lookup -->
+      <div class="card mb-16">
         <div class="card-header">
-          <span class="card-title">📋 All Service Records</span>
-          <button class="btn btn-outline btn-sm" id="btnRefresh">↻ Refresh</button>
+          <span class="card-title">🔍 Vehicle Service History Lookup</span>
         </div>
+        <div class="history-select-wrap">
+          <div class="form-group" style="flex:1;min-width:220px">
+            <label class="form-label" for="historyVehicle">Select Vehicle</label>
+            <select class="form-control" id="historyVehicle">
+              <option value="">— Select a vehicle to view its history —</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" id="btnLoadHistory">Load History</button>
+          <button class="btn btn-outline" id="btnClearHistory">Clear</button>
+        </div>
+        <div id="historyResult" style="display:none">
+          <div class="table-container">
+            <table>
+              <thead><tr><th>Record ID</th><th>Booking ID</th><th>Completion Date</th><th>Total Cost</th><th>Remarks</th><th>Details</th></tr></thead>
+              <tbody id="historyTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- All Records -->
+      <div class="card">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <div class="search-input-wrap" style="min-width:200px">
+              <span class="search-icon">🔍</span>
+              <input type="search" class="search-input" id="searchInput" placeholder="Search by record ID, booking ID, remarks…"/>
+            </div>
+            <button class="btn-clear" id="btnClear" style="display:none">✕</button>
+            <span class="record-count" id="recordCount">Loading…</span>
+          </div>
+          <div class="toolbar-right">
+            <button class="btn btn-outline btn-sm" id="btnRefresh">↻ Refresh</button>
+          </div>
+        </div>
+        <div class="card-header" style="padding:14px 20px"><span class="card-title">📋 All Service Records</span></div>
         <div class="table-container">
           <table>
             <thead><tr><th>Record ID</th><th>Booking ID</th><th>Completion Date</th><th>Total Cost</th><th>Remarks</th><th>Actions</th></tr></thead>
@@ -58,9 +94,9 @@
 
 <!-- ADD RECORD MODAL -->
 <div class="modal-overlay hidden" id="recordModal">
-  <div class="modal">
+  <div class="modal" style="max-width:560px">
     <div class="modal-header">
-      <span class="modal-title">Add Service Record</span>
+      <span class="modal-title">📋 Add Service Record</span>
       <button class="modal-close" data-dismiss="modal">×</button>
     </div>
     <div class="modal-body">
@@ -71,21 +107,36 @@
       <div id="modalAlerts"></div>
       <form id="recordForm" novalidate>
         <div class="form-grid">
-          <div class="form-group">
-            <label class="form-label" for="rBookingId">Booking ID *</label>
-            <input class="form-control" id="rBookingId" required type="number" min="1" placeholder="e.g. 404" />
+          <div class="form-group" style="grid-column:1/-1">
+            <label class="form-label" for="rBooking">Booking <span style="color:var(--danger)">*</span></label>
+            <select class="form-control" id="rBooking" required>
+              <option value="">— Loading completed bookings… —</option>
+            </select>
+            <span class="form-hint">Only COMPLETED bookings without a record are shown</span>
           </div>
+
+          <!-- Booking Preview Panel -->
+          <div id="bookingPreviewPanel" class="form-group hidden" style="grid-column:1/-1">
+            <div class="info-panel" style="margin-top:4px;background:var(--bg-secondary);padding:10px 14px;border-radius:6px;">
+              <div class="info-item"><div class="info-label">Booking ID</div><div class="info-value" id="prevBookingId">-</div></div>
+              <div class="info-item"><div class="info-label">Vehicle</div><div class="info-value" id="prevVehicle">-</div></div>
+              <div class="info-item"><div class="info-label">Service ID</div><div class="info-value" id="prevService">-</div></div>
+              <div class="info-item"><div class="info-label">Service Date</div><div class="info-value" id="prevServiceDate">-</div></div>
+              <div class="info-item"><div class="info-label">Status</div><div class="info-value" id="prevStatus">-</div></div>
+            </div>
+          </div>
+
           <div class="form-group">
             <label class="form-label" for="rDate">Completion Date</label>
-            <input class="form-control" id="rDate" type="date" />
+            <input class="form-control" id="rDate" type="date"/>
           </div>
           <div class="form-group">
             <label class="form-label" for="rExtraCost">Extra Parts Cost (₹)</label>
-            <input class="form-control" id="rExtraCost" type="number" min="0" step="0.01" placeholder="0.00" />
+            <input class="form-control" id="rExtraCost" type="number" min="0" step="0.01" placeholder="0.00"/>
           </div>
           <div class="form-group" style="grid-column:1/-1">
             <label class="form-label" for="rRemarks">Remarks</label>
-            <textarea class="form-control" id="rRemarks" rows="3" placeholder="Service notes, observations…"></textarea>
+            <textarea class="form-control" id="rRemarks" rows="3" placeholder="Service notes, observations, replaced parts…" maxlength="500"></textarea>
           </div>
         </div>
       </form>
@@ -97,15 +148,17 @@
   </div>
 </div>
 
-<!-- DETAILS MODAL -->
+<!-- DETAIL MODAL -->
 <div class="modal-overlay hidden" id="detailsModal">
-  <div class="modal" style="max-width:620px">
+  <div class="modal" style="max-width:640px">
     <div class="modal-header">
-      <span class="modal-title">Record Details – #<span id="detailRecordId"></span></span>
+      <span class="modal-title">Service Detail – Record #<span id="detailRecordId"></span></span>
       <button class="modal-close" data-dismiss="modal">×</button>
     </div>
     <div class="modal-body">
-      <div id="detailsTbodyWrap">
+      <div id="detailInfoPanel"></div>
+      <h4 style="font-size:13px;font-weight:700;margin:12px 0 8px;color:var(--text-muted)">SERVICE DETAIL LINES</h4>
+      <div class="table-container">
         <table>
           <thead><tr><th>Detail ID</th><th>Service ID</th><th>Quantity</th><th>Unit Price</th><th>Subtotal</th></tr></thead>
           <tbody id="detailsTbody"></tbody>
@@ -114,85 +167,186 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" data-dismiss="modal">Close</button>
+      <a id="btnGoBilling" href="billing.html" class="btn btn-primary">Generate Bill →</a>
     </div>
   </div>
 </div>
 
 <script src="../js/app.js"></script>
 <script>
-(function() {
-  let allRecords = [];
-  const tbody = document.getElementById('recordsTbody');
+(function () {
+  'use strict';
+  let allRecords   = [];
+  let allVehicles  = [];
+  let allBookings  = [];
+
+  const tbody       = document.getElementById('recordsTbody');
+  const searchInput = document.getElementById('searchInput');
+  const btnClear    = document.getElementById('btnClear');
+  const countEl     = document.getElementById('recordCount');
   const pageAlerts  = document.getElementById('pageAlerts');
   const modalAlerts = document.getElementById('modalAlerts');
   const saveBtn     = document.getElementById('btnSaveRecord');
+  const rBookingSel = document.getElementById('rBooking');
+  const previewPanel = document.getElementById('bookingPreviewPanel');
 
-  async function loadRecords() {
+  function updateCount(n, t) { countEl.textContent = n === t ? `${t} record${t !== 1 ? 's' : ''}` : `${n} of ${t}`; }
+
+  function renderTable(data, tbody2) {
+    const t = tbody2 || tbody;
+    if (!data || data.length === 0) { tableEmpty(t, 'No service records found.', 6); return; }
+    t.innerHTML = data.slice().reverse().map(r => `
+      <tr>
+        <td class="fw-600">#${escHtml(r.recordId)}</td>
+        <td>Booking #${escHtml(r.bookingId)}</td>
+        <td>${formatDate(r.completionDate)}</td>
+        <td class="fw-600" style="color:var(--success)">${formatCurrency(r.totalServiceCost)}</td>
+        <td class="text-sm text-muted">${escHtml(r.remarks) || '—'}</td>
+        <td><button class="btn btn-outline btn-sm" onclick="viewDetails(${r.recordId})">🔍 Details</button></td>
+      </tr>`).join('');
+  }
+
+  function applyFilter() {
+    const q = searchInput.value.toLowerCase().trim();
+    btnClear.style.display = q ? 'inline-block' : 'none';
+    const d = q ? allRecords.filter(r => 
+      String(r.recordId).includes(q) || 
+      String(r.bookingId).includes(q) ||
+      (r.remarks && r.remarks.toLowerCase().includes(q))
+    ) : allRecords;
+    renderTable(d);
+    updateCount(d.length, allRecords.length);
+  }
+  searchInput.addEventListener('input', applyFilter);
+  btnClear.addEventListener('click', () => { searchInput.value = ''; applyFilter(); });
+
+  async function load() {
     tableLoading(tbody, 6);
     try {
-      allRecords = await apiGet('/api/service-records');
+      [allRecords, allVehicles, allBookings] = await Promise.all([
+        apiGet('/api/service-records'),
+        apiGet('/api/vehicles'),
+        apiGet('/api/bookings')
+      ]);
+      // Populate vehicle history selector
+      const sel = document.getElementById('historyVehicle');
+      sel.innerHTML = '<option value="">— Select a vehicle to view its history —</option>' +
+        allVehicles.map(v => `<option value="${v.vehicleId}">${escHtml(v.registrationNumber)} – ${escHtml(v.brand)} ${escHtml(v.model)}</option>`).join('');
       renderTable(allRecords);
-    } catch(e) {
+      updateCount(allRecords.length, allRecords.length);
+    } catch (e) {
       showAlert(pageAlerts, e.message, 'danger');
       tableEmpty(tbody, 'Failed to load records.', 6);
     }
   }
 
-  function renderTable(data) {
-    if (!data || data.length === 0) { tableEmpty(tbody, 'No service records found.', 6); return; }
-    tbody.innerHTML = data.slice().reverse().map(r => `
-      <tr>
-        <td class="fw-600">#${escHtml(r.recordId)}</td>
-        <td>Booking #${escHtml(r.bookingId)}</td>
-        <td>${formatDate(r.completionDate)}</td>
-        <td class="fw-600">${formatCurrency(r.totalServiceCost)}</td>
-        <td class="text-sm text-muted">${escHtml(r.remarks) || '—'}</td>
-        <td>
-          <button class="btn btn-outline btn-sm" onclick="viewDetails(${r.recordId})">View Details</button>
-        </td>
-      </tr>`).join('');
-  }
+  /* ---- Vehicle History ---- */
+  document.getElementById('btnLoadHistory').addEventListener('click', async () => {
+    const vid = document.getElementById('historyVehicle').value;
+    if (!vid) { showAlert(pageAlerts, 'Select a vehicle first.', 'warning'); return; }
+    const hResult = document.getElementById('historyResult');
+    const hTbody  = document.getElementById('historyTbody');
+    hResult.style.display = 'block';
+    tableLoading(hTbody, 6);
+    try {
+      const records = await apiGet(`/api/service-records/vehicle/${vid}`);
+      if (!records || records.length === 0) { tableEmpty(hTbody, 'No service history for this vehicle.', 6); }
+      else { renderTable(records, hTbody); }
+    } catch (e) {
+      tableEmpty(hTbody, 'Error: ' + e.message, 6);
+    }
+  });
+  document.getElementById('btnClearHistory').addEventListener('click', () => {
+    document.getElementById('historyVehicle').value = '';
+    document.getElementById('historyResult').style.display = 'none';
+  });
 
+  /* ---- Booking Selection Change Listener ---- */
+  rBookingSel.addEventListener('change', () => {
+    const bid = rBookingSel.value;
+    if (!bid) {
+      previewPanel.classList.add('hidden');
+      return;
+    }
+    const b = allBookings.find(x => String(x.bookingId) === String(bid));
+    if (!b) {
+      previewPanel.classList.add('hidden');
+      return;
+    }
+    const v = allVehicles.find(x => String(x.vehicleId) === String(b.vehicleId));
+    document.getElementById('prevBookingId').textContent = `#${b.bookingId}`;
+    document.getElementById('prevVehicle').textContent = v ? `${v.registrationNumber} (${v.brand} ${v.model})` : `Vehicle #${b.vehicleId}`;
+    document.getElementById('prevService').textContent = `Service #${b.serviceId}`;
+    document.getElementById('prevServiceDate').textContent = formatDate(b.serviceDate);
+    document.getElementById('prevStatus').innerHTML = `<span class="badge badge-green">${b.status}</span>`;
+    previewPanel.classList.remove('hidden');
+  });
+
+  /* ---- Add Record ---- */
   document.getElementById('btnAddRecord').addEventListener('click', () => {
     document.getElementById('recordForm').reset();
-    document.getElementById('rDate').value = new Date().toISOString().slice(0,10);
+    previewPanel.classList.add('hidden');
+    document.getElementById('rDate').value = new Date().toISOString().slice(0, 10);
+    // Populate completed bookings that don't have a record yet
+    const recordedBookingIds = new Set(allRecords.map(r => r.bookingId));
+    const eligible = allBookings.filter(b => b.status === 'COMPLETED' && !recordedBookingIds.has(b.bookingId));
+    if (eligible.length === 0) {
+      rBookingSel.innerHTML = '<option value="">No eligible COMPLETED bookings available</option>';
+    } else {
+      rBookingSel.innerHTML = '<option value="">— Select Booking —</option>' +
+        eligible.map(b => {
+          const v = allVehicles.find(x => String(x.vehicleId) === String(b.vehicleId));
+          const vInfo = v ? `${v.registrationNumber} (${v.brand} ${v.model})` : `Vehicle #${b.vehicleId}`;
+          return `<option value="${b.bookingId}">Booking #${b.bookingId} | ${vInfo} | Date: ${formatDate(b.serviceDate)}</option>`;
+        }).join('');
+    }
     clearAlerts(modalAlerts);
     openModal('recordModal');
   });
 
   saveBtn.addEventListener('click', async () => {
     clearAlerts(modalAlerts);
-    const bid      = document.getElementById('rBookingId').value.trim();
-    const date     = document.getElementById('rDate').value;
-    const extra    = document.getElementById('rExtraCost').value.trim();
-    const remarks  = document.getElementById('rRemarks').value.trim();
-    if (!bid) { showAlert(modalAlerts, 'Booking ID is required.', 'warning'); return; }
-
-    const extraParam = extra ? `?extraPartsCost=${encodeURIComponent(extra)}` : '';
-    const payload = { bookingId: parseInt(bid), completionDate: date || null, remarks: remarks || null };
+    const bid   = rBookingSel.value;
+    const date  = document.getElementById('rDate').value;
+    const extra = document.getElementById('rExtraCost').value.trim();
+    const rem   = document.getElementById('rRemarks').value.trim();
+    if (!bid) { showAlert(modalAlerts, 'Please select a completed booking.', 'warning'); return; }
+    if (extra !== '' && parseFloat(extra) < 0) {
+      showAlert(modalAlerts, 'Extra parts cost cannot be negative.', 'warning');
+      return;
+    }
+    const extraParam = extra && parseFloat(extra) > 0 ? `?extraPartsCost=${encodeURIComponent(extra)}` : '';
+    const payload = { bookingId: parseInt(bid), completionDate: date || null, remarks: rem || null };
     setLoading(saveBtn, true, 'Save Record');
     try {
       await apiPost('/api/service-records' + extraParam, payload);
       closeModal('recordModal');
-      showAlert(pageAlerts, 'Service record created!', 'success');
-      await loadRecords();
-    } catch(e) {
+      showAlert(pageAlerts, '✅ Service record created! You can now generate a bill.', 'success');
+      await load();
+    } catch (e) {
       showAlert(modalAlerts, e.message, 'danger');
-    } finally {
-      setLoading(saveBtn, false, 'Save Record');
-    }
+    } finally { setLoading(saveBtn, false, 'Save Record'); }
   });
 
-  window.viewDetails = async function(id) {
+  /* ---- View Details ---- */
+  window.viewDetails = async function (id) {
+    const r = allRecords.find(x => x.recordId === id);
     document.getElementById('detailRecordId').textContent = id;
+    document.getElementById('detailInfoPanel').innerHTML = r ? `
+      <div class="info-panel">
+        <div class="info-item"><div class="info-label">Record ID</div><div class="info-value">#${escHtml(r.recordId)}</div></div>
+        <div class="info-item"><div class="info-label">Booking ID</div><div class="info-value">#${escHtml(r.bookingId)}</div></div>
+        <div class="info-item"><div class="info-label">Completion Date</div><div class="info-value">${formatDate(r.completionDate)}</div></div>
+        <div class="info-item"><div class="info-label">Total Cost</div><div class="info-value" style="color:var(--success)">${formatCurrency(r.totalServiceCost)}</div></div>
+        ${r.remarks ? `<div class="info-item" style="grid-column:1/-1"><div class="info-label">Remarks</div><div class="info-value">${escHtml(r.remarks)}</div></div>` : ''}
+      </div>` : '';
     const dtbody = document.getElementById('detailsTbody');
     tableLoading(dtbody, 5);
     openModal('detailsModal');
     try {
       const details = await apiGet(`/api/service-records/${id}/details`);
-      if (!details || details.length === 0) {
-        tableEmpty(dtbody, 'No detail lines found.', 5);
-      } else {
+      if (!details || details.length === 0) { tableEmpty(dtbody, 'No detail lines for this record.', 5); }
+      else {
         dtbody.innerHTML = details.map(d => `
           <tr>
             <td>${escHtml(d.detailId)}</td>
@@ -202,14 +356,15 @@
             <td class="fw-600">${formatCurrency(d.subtotal)}</td>
           </tr>`).join('');
       }
-    } catch(e) {
+    } catch (e) {
       tableEmpty(dtbody, 'Failed to load details: ' + e.message, 5);
     }
   };
 
-  document.getElementById('btnRefresh').addEventListener('click', loadRecords);
-  loadRecords();
+  document.getElementById('btnRefresh').addEventListener('click', load);
+  load();
 })();
 </script>
 </body>
 </html>
+

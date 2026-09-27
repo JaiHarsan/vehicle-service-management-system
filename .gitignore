@@ -15,5 +15,5 @@ local.properties
 *.log
 lib/
 classpath.txt
-
+*.ps1
 

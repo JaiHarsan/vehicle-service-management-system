@@ -23,35 +23,71 @@
       <a class="nav-item" data-page="service-records.html" href="service-records.html"><span class="nav-icon">📋</span> Service Records</a>
       <a class="nav-item" data-page="billing.html"         href="billing.html"><span class="nav-icon">💰</span> Billing</a>
     </nav>
-    <div class="sidebar-footer">Phase 9A &bull; Spring Boot + MySQL</div>
+    <div class="sidebar-footer">Phase 9F &bull; Spring Boot + MySQL</div>
   </aside>
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
   <div class="main-wrapper">
     <header class="top-header">
       <button class="menu-toggle" id="menuToggle">☰</button>
-      <div class="header-title">Billing <span class="header-subtitle">Invoices &amp; payments</span></div>
-      <div class="header-right"><div class="header-badge"><span class="status-dot"></span> Live Data</div></div>
+      <div class="header-title">Billing <span class="header-subtitle">Invoices &amp; payment tracking</span></div>
+      <div class="header-right">
+        <div class="header-badge"><span class="status-dot"></span> Live Data</div>
+        <button class="btn btn-primary" id="btnGenerateBill">+ Generate Bill</button>
+      </div>
     </header>
 
     <main class="page-content">
-      <div class="page-header">
-        <div class="page-header-left"><h1>Billing</h1><p>Generate bills and track payment status</p></div>
-        <button class="btn btn-primary" id="btnGenerateBill">+ Generate Bill</button>
-      </div>
       <div id="pageAlerts"></div>
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">💰 All Bills</span>
-          <button class="btn btn-outline btn-sm" id="btnRefresh">↻ Refresh</button>
+
+      <!-- Quick Bill Lookup -->
+      <div class="card mb-16">
+        <div class="card-header"><span class="card-title">🔍 Quick Lookup</span></div>
+        <div style="padding:16px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+          <div class="form-group" style="flex:1;min-width:180px">
+            <label class="form-label" for="lookupBillId">Bill ID</label>
+            <input class="form-control" id="lookupBillId" type="number" min="1" placeholder="e.g. 701"/>
+          </div>
+          <button class="btn btn-outline" id="btnLookupBill">Lookup Bill</button>
+          <div style="width:1px;height:36px;background:var(--border);margin:0 4px"></div>
+          <div class="form-group" style="flex:1;min-width:180px">
+            <label class="form-label" for="lookupRecordId">By Service Record ID</label>
+            <input class="form-control" id="lookupRecordId" type="number" min="1" placeholder="e.g. 501"/>
+          </div>
+          <button class="btn btn-outline" id="btnLookupByRecord">Lookup</button>
         </div>
+        <div id="lookupResult" class="hidden" style="padding:0 16px 16px">
+          <div id="lookupContent"></div>
+        </div>
+      </div>
+
+      <!-- All Bills Table -->
+      <div class="card">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <div class="search-input-wrap" style="min-width:180px">
+              <span class="search-icon">🔍</span>
+              <input type="search" class="search-input" id="searchInput" placeholder="Search bill ID, record ID…"/>
+            </div>
+            <select class="filter-select" id="filterPayment">
+              <option value="">All Payment Statuses</option>
+              <option value="PENDING">PENDING</option>
+              <option value="PAID">PAID</option>
+            </select>
+            <span class="record-count" id="recordCount">Loading…</span>
+          </div>
+          <div class="toolbar-right">
+            <button class="btn btn-outline btn-sm" id="btnRefresh">↻ Refresh</button>
+          </div>
+        </div>
+        <div class="card-header" style="padding:14px 20px"><span class="card-title">💰 All Bills</span></div>
         <div class="table-container">
           <table>
             <thead>
               <tr>
                 <th>Bill ID</th><th>Record ID</th><th>Service Cost</th>
                 <th>Parts</th><th>Labour</th><th>Tax</th><th>Discount</th>
-                <th>Total</th><th>Status</th><th>Actions</th>
+                <th>Total</th><th>Status</th><th>Action</th>
               </tr>
             </thead>
             <tbody id="billsTbody"></tbody>
@@ -64,67 +100,133 @@
 
 <!-- GENERATE BILL MODAL -->
 <div class="modal-overlay hidden" id="billModal">
-  <div class="modal">
+  <div class="modal" style="max-width:580px">
     <div class="modal-header">
-      <span class="modal-title">Generate Bill</span>
+      <span class="modal-title">💰 Generate Bill</span>
       <button class="modal-close" data-dismiss="modal">×</button>
     </div>
     <div class="modal-body">
       <div class="alert alert-info" style="margin-bottom:12px">
         <span class="alert-icon">ℹ️</span>
-        <span>A bill requires an existing <strong>Service Record</strong>. Tax rate defaults to 18% GST.</span>
+        <span>The service cost is pulled automatically from the Service Record. Tax rate is 18% GST by default. Billing calculation is performed by the backend.</span>
       </div>
       <div id="modalAlerts"></div>
       <form id="billForm" novalidate>
         <div class="form-grid">
-          <div class="form-group">
-            <label class="form-label" for="bRecordId">Service Record ID *</label>
-            <input class="form-control" id="bRecordId" required type="number" min="1" placeholder="e.g. 501" />
+          <div class="form-group" style="grid-column:1/-1">
+            <label class="form-label" for="bRecord">Service Record <span style="color:var(--danger)">*</span></label>
+            <select class="form-control" id="bRecord" required>
+              <option value="">— Loading service records… —</option>
+            </select>
+            <span class="form-hint">Only records without an existing bill are shown</span>
+          </div>
+          <div id="recordCostPreview" class="form-group hidden" style="grid-column:1/-1">
+            <div class="info-panel" style="background:var(--bg-secondary);padding:10px 14px;border-radius:6px;">
+              <div class="info-item"><div class="info-label">Record Base Cost</div><div class="info-value" id="prevRecordCost" style="color:var(--success)">-</div></div>
+              <div class="info-item"><div class="info-label">Booking ID</div><div class="info-value" id="prevRecordBooking">-</div></div>
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label" for="bPartsCost">Parts Cost (₹)</label>
-            <input class="form-control" id="bPartsCost" type="number" min="0" step="0.01" placeholder="0.00" />
+            <input class="form-control" id="bPartsCost" type="number" min="0" step="0.01" placeholder="0.00"/>
           </div>
           <div class="form-group">
             <label class="form-label" for="bLaborCost">Labour Cost (₹)</label>
-            <input class="form-control" id="bLaborCost" type="number" min="0" step="0.01" placeholder="0.00" />
+            <input class="form-control" id="bLaborCost" type="number" min="0" step="0.01" placeholder="0.00"/>
           </div>
           <div class="form-group">
-            <label class="form-label" for="bTaxRate">Tax Rate (e.g. 0.18 for 18%)</label>
-            <input class="form-control" id="bTaxRate" type="number" min="0" max="1" step="0.01" placeholder="0.18" value="0.18"/>
+            <label class="form-label" for="bTaxRate">Tax Rate</label>
+            <input class="form-control" id="bTaxRate" type="number" min="0" max="1" step="0.01" value="0.18"/>
+            <span class="form-hint">0.18 = 18% GST</span>
           </div>
           <div class="form-group">
             <label class="form-label" for="bDiscount">Discount (₹)</label>
-            <input class="form-control" id="bDiscount" type="number" min="0" step="0.01" placeholder="0.00" />
+            <input class="form-control" id="bDiscount" type="number" min="0" step="0.01" placeholder="0.00"/>
           </div>
         </div>
       </form>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" data-dismiss="modal">Cancel</button>
-      <button class="btn btn-primary" id="btnSaveBill">Generate</button>
+      <button class="btn btn-primary" id="btnSaveBill">Generate Bill</button>
+    </div>
+  </div>
+</div>
+
+<!-- BILL DETAIL MODAL -->
+<div class="modal-overlay hidden" id="billDetailModal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <span class="modal-title">Bill #<span id="billDetailId"></span></span>
+      <button class="modal-close" data-dismiss="modal">×</button>
+    </div>
+    <div class="modal-body" id="billDetailBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-dismiss="modal">Close</button>
+      <button class="btn btn-success hidden" id="billDetailPayBtn">Mark as PAID</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAY CONFIRMATION MODAL -->
+<div class="modal-overlay hidden" id="payConfirmModal">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header">
+      <span class="modal-title">💳 Confirm Payment</span>
+      <button class="modal-close" data-dismiss="modal">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-info" style="margin-bottom:12px">
+        <span class="alert-icon">ℹ️</span>
+        <span>Confirm payment for the following bill:</span>
+      </div>
+      <div id="payModalAlerts"></div>
+      <div class="info-panel" style="margin-bottom:12px">
+        <div class="info-item"><div class="info-label">Bill ID</div><div class="info-value" id="payBillId">-</div></div>
+        <div class="info-item"><div class="info-label">Service Record</div><div class="info-value" id="payRecordId">-</div></div>
+        <div class="info-item"><div class="info-label">Total Amount</div><div class="info-value fw-600" id="payTotalAmount" style="color:var(--success)">-</div></div>
+        <div class="info-item"><div class="info-label">Current Status</div><div class="info-value" id="payCurrentStatus">-</div></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-dismiss="modal">Cancel</button>
+      <button class="btn btn-success" id="btnConfirmPay">Confirm Payment</button>
     </div>
   </div>
 </div>
 
 <script src="../js/app.js"></script>
 <script>
-(function() {
-  let allBills = [];
-  const tbody = document.getElementById('billsTbody');
-  const pageAlerts  = document.getElementById('pageAlerts');
-  const modalAlerts = document.getElementById('modalAlerts');
-  const saveBtn     = document.getElementById('btnSaveBill');
+(function () {
+  'use strict';
+  let allBills    = [];
+  let allRecords  = [];
+  let selectedBillForPay = null;
 
-  async function loadBills() {
-    tableLoading(tbody, 10);
-    try {
-      allBills = await apiGet('/api/bills');
-      renderTable(allBills);
-    } catch(e) {
-      showAlert(pageAlerts, e.message, 'danger');
-      tableEmpty(tbody, 'Failed to load bills.', 10);
-    }
+  const tbody         = document.getElementById('billsTbody');
+  const searchInput   = document.getElementById('searchInput');
+  const filterPayment = document.getElementById('filterPayment');
+  const countEl       = document.getElementById('recordCount');
+  const pageAlerts    = document.getElementById('pageAlerts');
+  const modalAlerts   = document.getElementById('modalAlerts');
+  const payModalAlerts= document.getElementById('payModalAlerts');
+  const saveBtn       = document.getElementById('btnSaveBill');
+  const confirmPayBtn = document.getElementById('btnConfirmPay');
+  const bRecordSel    = document.getElementById('bRecord');
+  const recordCostPrev= document.getElementById('recordCostPreview');
+
+  function updateCount(n, t) { countEl.textContent = n === t ? `${t} bill${t !== 1 ? 's' : ''}` : `${n} of ${t}`; }
+
+  function renderBillSummary(b) {
+    return `
+      <div class="bill-summary">
+        <div class="bill-line"><div class="bill-line-label">Service Cost</div><div class="bill-line-value">${formatCurrency(b.serviceCost)}</div></div>
+        <div class="bill-line"><div class="bill-line-label">Parts</div><div class="bill-line-value">${formatCurrency(b.partsCost)}</div></div>
+        <div class="bill-line"><div class="bill-line-label">Labour</div><div class="bill-line-value">${formatCurrency(b.laborCost)}</div></div>
+        <div class="bill-line"><div class="bill-line-label">Tax</div><div class="bill-line-value">${formatCurrency(b.tax)}</div></div>
+        <div class="bill-line"><div class="bill-line-label">Discount</div><div class="bill-line-value">- ${formatCurrency(b.discount)}</div></div>
+        <div class="bill-line"><div class="bill-line-label">Total</div><div class="bill-line-value total">${formatCurrency(b.totalAmount)}</div></div>
+      </div>`;
   }
 
   function renderTable(data) {
@@ -138,61 +240,197 @@
         <td>${formatCurrency(b.laborCost)}</td>
         <td>${formatCurrency(b.tax)}</td>
         <td>${formatCurrency(b.discount)}</td>
-        <td class="fw-600">${formatCurrency(b.totalAmount)}</td>
+        <td class="fw-600" style="color:var(--primary)">${formatCurrency(b.totalAmount)}</td>
         <td>${paymentStatusBadge(b.paymentStatus)}</td>
         <td>
-          ${b.paymentStatus === 'PENDING'
-            ? `<button class="btn btn-success btn-sm" onclick="markPaid(${b.billId})">Mark Paid</button>`
-            : '<span class="text-muted text-sm">Settled</span>'}
+          <div class="table-actions">
+            <button class="btn btn-outline btn-sm" onclick="viewBill(${b.billId})">🔍</button>
+            ${b.paymentStatus === 'PENDING'
+              ? `<button class="btn btn-success btn-sm" onclick="promptPay(${b.billId})">✔ Pay</button>`
+              : '<span class="badge badge-green">Settled</span>'}
+          </div>
         </td>
       </tr>`).join('');
   }
 
+  function applyFilter() {
+    const q   = searchInput.value.toLowerCase().trim();
+    const sta = filterPayment.value;
+    let d = allBills;
+    if (sta) {
+      d = d.filter(b => b.paymentStatus === sta);
+    }
+    if (q) {
+      d = d.filter(b => String(b.billId).includes(q) || String(b.recordId).includes(q));
+    }
+    renderTable(d);
+    updateCount(d.length, allBills.length);
+  }
+  filterPayment.addEventListener('change', applyFilter);
+  searchInput.addEventListener('input', applyFilter);
+
+  async function load() {
+    tableLoading(tbody, 10);
+    try {
+      [allBills, allRecords] = await Promise.all([apiGet('/api/bills'), apiGet('/api/service-records')]);
+      renderTable(allBills);
+      updateCount(allBills.length, allBills.length);
+    } catch (e) {
+      showAlert(pageAlerts, e.message, 'danger');
+      tableEmpty(tbody, 'Failed to load bills.', 10);
+    }
+  }
+
+  /* ---- Quick lookup ---- */
+  document.getElementById('btnLookupBill').addEventListener('click', async () => {
+    const id = document.getElementById('lookupBillId').value.trim();
+    if (!id) { showAlert(pageAlerts, 'Enter a bill ID.', 'warning'); return; }
+    const res = document.getElementById('lookupResult');
+    const content = document.getElementById('lookupContent');
+    res.classList.remove('hidden');
+    content.innerHTML = '<span class="spinner spinner-dark"></span> Loading…';
+    try {
+      const b = await apiGet(`/api/bills/${id}`);
+      content.innerHTML = renderBillSummary(b) +
+        `<div style="display:flex;gap:8px;align-items:center">
+           ${paymentStatusBadge(b.paymentStatus)}
+           ${b.paymentStatus === 'PENDING' ? `<button class="btn btn-success btn-sm" onclick="promptPay(${b.billId})">✔ Mark Paid</button>` : ''}
+         </div>`;
+    } catch (e) { content.innerHTML = `<div class="alert alert-danger"><span class="alert-icon">❌</span><span>${escHtml(e.message)}</span></div>`; }
+  });
+
+  document.getElementById('btnLookupByRecord').addEventListener('click', async () => {
+    const id = document.getElementById('lookupRecordId').value.trim();
+    if (!id) { showAlert(pageAlerts, 'Enter a service record ID.', 'warning'); return; }
+    const res = document.getElementById('lookupResult');
+    const content = document.getElementById('lookupContent');
+    res.classList.remove('hidden');
+    content.innerHTML = '<span class="spinner spinner-dark"></span> Loading…';
+    try {
+      const b = await apiGet(`/api/bills/record/${id}`);
+      content.innerHTML = `<p class="text-sm text-muted mb-16">Bill for Record #${escHtml(id)}:</p>` + renderBillSummary(b) +
+        `<div style="display:flex;gap:8px;align-items:center">
+           ${paymentStatusBadge(b.paymentStatus)}
+           ${b.paymentStatus === 'PENDING' ? `<button class="btn btn-success btn-sm" onclick="promptPay(${b.billId})">✔ Mark Paid</button>` : ''}
+         </div>`;
+    } catch (e) { content.innerHTML = `<div class="alert alert-danger"><span class="alert-icon">❌</span><span>${escHtml(e.message)}</span></div>`; }
+  });
+
+  /* ---- Service Record Cost Preview ---- */
+  bRecordSel.addEventListener('change', () => {
+    const rid = bRecordSel.value;
+    if (!rid) {
+      recordCostPrev.classList.add('hidden');
+      return;
+    }
+    const r = allRecords.find(x => String(x.recordId) === String(rid));
+    if (!r) {
+      recordCostPrev.classList.add('hidden');
+      return;
+    }
+    document.getElementById('prevRecordCost').textContent = formatCurrency(r.totalServiceCost);
+    document.getElementById('prevRecordBooking').textContent = `#${r.bookingId}`;
+    recordCostPrev.classList.remove('hidden');
+  });
+
+  /* ---- Generate Bill ---- */
   document.getElementById('btnGenerateBill').addEventListener('click', () => {
     document.getElementById('billForm').reset();
     document.getElementById('bTaxRate').value = '0.18';
+    recordCostPrev.classList.add('hidden');
+    // Load records without bills
+    const billedRecordIds = new Set(allBills.map(b => b.recordId));
+    const eligible = allRecords.filter(r => !billedRecordIds.has(r.recordId));
+    if (eligible.length === 0) {
+      bRecordSel.innerHTML = '<option value="">No unbilled service records available</option>';
+    } else {
+      bRecordSel.innerHTML = '<option value="">— Select Service Record —</option>' +
+        eligible.map(r => `<option value="${r.recordId}">Record #${r.recordId} | Booking #${r.bookingId} | Cost: ${formatCurrency(r.totalServiceCost)}</option>`).join('');
+    }
     clearAlerts(modalAlerts);
     openModal('billModal');
   });
 
   saveBtn.addEventListener('click', async () => {
     clearAlerts(modalAlerts);
-    const rid   = document.getElementById('bRecordId').value.trim();
-    if (!rid) { showAlert(modalAlerts, 'Service Record ID is required.', 'warning'); return; }
-
-    const payload = {
-      recordId:  parseInt(rid),
-      partsCost: parseFloat(document.getElementById('bPartsCost').value || 0),
-      laborCost: parseFloat(document.getElementById('bLaborCost').value || 0),
-      taxRate:   parseFloat(document.getElementById('bTaxRate').value   || 0.18),
-      discount:  parseFloat(document.getElementById('bDiscount').value  || 0)
-    };
-    setLoading(saveBtn, true, 'Generate');
+    const rid      = bRecordSel.value;
+    if (!rid) { showAlert(modalAlerts, 'Please select a service record.', 'warning'); return; }
+    const parts  = parseFloat(document.getElementById('bPartsCost').value  || 0);
+    const labor  = parseFloat(document.getElementById('bLaborCost').value  || 0);
+    const tax    = parseFloat(document.getElementById('bTaxRate').value     || 0.18);
+    const disc   = parseFloat(document.getElementById('bDiscount').value   || 0);
+    if (parts < 0 || labor < 0 || disc < 0) { showAlert(modalAlerts, 'Parts cost, labour cost and discount cannot be negative.', 'warning'); return; }
+    if (tax < 0 || tax > 1)                  { showAlert(modalAlerts, 'Tax rate must be between 0 and 1 (e.g. 0.18 for 18%).', 'warning'); return; }
+    const payload = { recordId: parseInt(rid), partsCost: parts, laborCost: labor, taxRate: tax, discount: disc };
+    setLoading(saveBtn, true, 'Generate Bill');
     try {
-      await apiPost('/api/bills', payload);
+      const bill = await apiPost('/api/bills', payload);
       closeModal('billModal');
-      showAlert(pageAlerts, 'Bill generated successfully!', 'success');
-      await loadBills();
-    } catch(e) {
+      showAlert(pageAlerts, `✅ Bill #${bill.billId} generated! Total: ${formatCurrency(bill.totalAmount)}`, 'success');
+      await load();
+    } catch (e) {
       showAlert(modalAlerts, e.message, 'danger');
+    } finally { setLoading(saveBtn, false, 'Generate Bill'); }
+  });
+
+  /* ---- View bill detail ---- */
+  window.viewBill = function (id) {
+    const b = allBills.find(x => x.billId === id);
+    if (!b) return;
+    document.getElementById('billDetailId').textContent = id;
+    document.getElementById('billDetailBody').innerHTML =
+      `<div class="info-panel" style="margin-bottom:12px">
+         <div class="info-item"><div class="info-label">Bill ID</div><div class="info-value">#${escHtml(b.billId)}</div></div>
+         <div class="info-item"><div class="info-label">Record ID</div><div class="info-value">R-${escHtml(b.recordId)}</div></div>
+         <div class="info-item"><div class="info-label">Payment</div><div class="info-value">${paymentStatusBadge(b.paymentStatus)}</div></div>
+       </div>` + renderBillSummary(b);
+    const payBtn = document.getElementById('billDetailPayBtn');
+    if (b.paymentStatus === 'PENDING') {
+      payBtn.classList.remove('hidden');
+      payBtn.onclick = () => { closeModal('billDetailModal'); promptPay(id); };
+    } else {
+      payBtn.classList.add('hidden');
+    }
+    openModal('billDetailModal');
+  };
+
+  /* ---- Prompt Pay Confirmation Modal ---- */
+  window.promptPay = function (id) {
+    const b = allBills.find(x => x.billId === id);
+    if (!b) return;
+    if (b.paymentStatus === 'PAID') {
+      showAlert(pageAlerts, `Bill #${id} is already paid.`, 'warning');
+      return;
+    }
+    selectedBillForPay = b;
+    document.getElementById('payBillId').textContent = `#${b.billId}`;
+    document.getElementById('payRecordId').textContent = `Record #${b.recordId}`;
+    document.getElementById('payTotalAmount').textContent = formatCurrency(b.totalAmount);
+    document.getElementById('payCurrentStatus').innerHTML = paymentStatusBadge(b.paymentStatus);
+    clearAlerts(payModalAlerts);
+    openModal('payConfirmModal');
+  };
+
+  confirmPayBtn.addEventListener('click', async () => {
+    if (!selectedBillForPay) return;
+    clearAlerts(payModalAlerts);
+    setLoading(confirmPayBtn, true, 'Confirm Payment');
+    try {
+      await apiPut(`/api/bills/${selectedBillForPay.billId}/pay`);
+      closeModal('payConfirmModal');
+      showAlert(pageAlerts, `✅ Bill #${selectedBillForPay.billId} marked as PAID!`, 'success');
+      await load();
+      // Hide quick lookup if it was showing
+      document.getElementById('lookupResult').classList.add('hidden');
+    } catch (e) {
+      showAlert(payModalAlerts, e.message, 'danger');
     } finally {
-      setLoading(saveBtn, false, 'Generate');
+      setLoading(confirmPayBtn, false, 'Confirm Payment');
     }
   });
 
-  window.markPaid = async function(id) {
-    if (!confirm('Mark bill #' + id + ' as PAID?')) return;
-    try {
-      await apiPut(`/api/bills/${id}/pay`);
-      showAlert(pageAlerts, 'Bill marked as PAID!', 'success');
-      await loadBills();
-    } catch(e) {
-      showAlert(pageAlerts, e.message, 'danger');
-    }
-  };
-
-  document.getElementById('btnRefresh').addEventListener('click', loadBills);
-  loadBills();
+  document.getElementById('btnRefresh').addEventListener('click', load);
+  load();
 })();
 </script>
 </body>

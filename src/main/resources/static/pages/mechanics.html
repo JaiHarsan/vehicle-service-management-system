@@ -23,7 +23,7 @@
       <a class="nav-item" data-page="service-records.html" href="service-records.html"><span class="nav-icon">📋</span> Service Records</a>
       <a class="nav-item" data-page="billing.html"         href="billing.html"><span class="nav-icon">💰</span> Billing</a>
     </nav>
-    <div class="sidebar-footer">Phase 9A &bull; Spring Boot + MySQL</div>
+    <div class="sidebar-footer">Phase 9D &bull; Spring Boot + MySQL</div>
   </aside>
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
@@ -31,23 +31,45 @@
     <header class="top-header">
       <button class="menu-toggle" id="menuToggle">☰</button>
       <div class="header-title">Mechanics <span class="header-subtitle">Workshop staff</span></div>
-      <div class="header-right"><div class="header-badge"><span class="status-dot"></span> Live Data</div></div>
+      <div class="header-right">
+        <div class="header-badge"><span class="status-dot"></span> Live Data</div>
+        <button class="btn btn-primary" id="btnAddMechanic">+ Add Mechanic</button>
+      </div>
     </header>
 
     <main class="page-content">
-      <div class="page-header">
-        <div class="page-header-left"><h1>Mechanics</h1><p>Add, update and manage workshop mechanics</p></div>
-        <button class="btn btn-primary" id="btnAddMechanic">+ Add Mechanic</button>
-      </div>
       <div id="pageAlerts"></div>
       <div class="card">
-        <div class="card-header">
-          <span class="card-title">🔧 Mechanic List</span>
-          <button class="btn btn-outline btn-sm" id="btnRefresh">↻ Refresh</button>
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <div class="search-input-wrap" style="min-width:240px">
+              <span class="search-icon">🔍</span>
+              <input type="search" class="search-input" id="searchInput" placeholder="Search by name, phone, specialization…"/>
+            </div>
+            <button class="btn-clear" id="btnClear" title="Clear filters" style="display:none">✕</button>
+            <select class="filter-select" id="filterAvail">
+              <option value="">All Availability</option>
+              <option value="AVAILABLE">AVAILABLE</option>
+              <option value="BUSY">BUSY</option>
+              <option value="UNAVAILABLE">UNAVAILABLE</option>
+            </select>
+            <select class="filter-select" id="filterSpec">
+              <option value="">All Specializations</option>
+              <option value="GENERAL">GENERAL</option>
+              <option value="ENGINE">ENGINE</option>
+              <option value="BRAKE">BRAKE</option>
+              <option value="ELECTRICAL">ELECTRICAL</option>
+            </select>
+            <span class="record-count" id="recordCount">Loading…</span>
+          </div>
+          <div class="toolbar-right">
+            <button class="btn btn-outline btn-sm" id="btnRefresh">↻ Refresh</button>
+          </div>
         </div>
+        <div class="card-header" style="padding:14px 20px"><span class="card-title">🔧 Mechanic List</span></div>
         <div class="table-container">
           <table>
-            <thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Specialization</th><th>Availability</th><th>Actions</th></tr></thead>
+            <thead><tr><th>#</th><th>ID</th><th>Name</th><th>Phone</th><th>Specialization</th><th>Availability</th><th>Actions</th></tr></thead>
             <tbody id="mechanicsTbody"></tbody>
           </table>
         </div>
@@ -65,25 +87,26 @@
     </div>
     <div class="modal-body">
       <div id="modalAlerts"></div>
-      <form id="mechanicForm" novalidate>
+      <form id="mechanicForm" novalidate autocomplete="off">
         <div class="form-grid">
           <div class="form-group">
-            <label class="form-label" for="mName">Full Name *</label>
-            <input class="form-control" id="mName" required placeholder="e.g. Ramesh" />
+            <label class="form-label" for="mName">Full Name <span style="color:var(--danger)">*</span></label>
+            <input class="form-control" id="mName" required placeholder="e.g. Ramesh" maxlength="100"/>
+            <span class="form-hint">At least 2 characters</span>
           </div>
           <div class="form-group">
-            <label class="form-label" for="mPhone">Phone *</label>
-            <input class="form-control" id="mPhone" required placeholder="10-digit mobile" />
+            <label class="form-label" for="mPhone">Phone Number <span style="color:var(--danger)">*</span></label>
+            <input class="form-control" id="mPhone" required placeholder="10-digit mobile number" maxlength="10" pattern="[0-9]{10}"/>
+            <span class="form-hint">Exactly 10 digits</span>
           </div>
           <div class="form-group" style="grid-column:1/-1">
-            <label class="form-label" for="mSpec">Specialization *</label>
+            <label class="form-label" for="mSpec">Specialization <span style="color:var(--danger)">*</span></label>
             <select class="form-control" id="mSpec" required>
-              <option value="">— Select —</option>
-              <option value="ENGINE">ENGINE</option>
-              <option value="ELECTRICAL">ELECTRICAL</option>
-              <option value="BRAKE">BRAKE</option>
-              <option value="TRANSMISSION">TRANSMISSION</option>
+              <option value="">— Select Specialization —</option>
               <option value="GENERAL">GENERAL</option>
+              <option value="ENGINE">ENGINE</option>
+              <option value="BRAKE">BRAKE</option>
+              <option value="ELECTRICAL">ELECTRICAL</option>
             </select>
           </div>
         </div>
@@ -91,48 +114,80 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" data-dismiss="modal">Cancel</button>
-      <button class="btn btn-primary" id="btnSaveMechanic">Save Mechanic</button>
+      <button class="btn btn-primary" id="btnSave">Save Mechanic</button>
+    </div>
+  </div>
+</div>
+
+<!-- AVAILABILITY MODAL -->
+<div class="modal-overlay hidden" id="availModal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header">
+      <span class="modal-title">Update Availability</span>
+      <button class="modal-close" data-dismiss="modal">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="availAlerts"></div>
+      <p class="mb-16">Change availability for <strong id="availMechanicName"></strong>:</p>
+      <select class="form-control" id="availSelect">
+        <option value="AVAILABLE">AVAILABLE</option>
+        <option value="BUSY">BUSY</option>
+        <option value="UNAVAILABLE">UNAVAILABLE</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-dismiss="modal">Cancel</button>
+      <button class="btn btn-primary" id="btnSaveAvail">Update</button>
     </div>
   </div>
 </div>
 
 <!-- DELETE CONFIRM -->
 <div class="modal-overlay hidden" id="deleteModal">
-  <div class="modal" style="max-width:380px">
-    <div class="modal-header"><span class="modal-title">Confirm Delete</span><button class="modal-close" data-dismiss="modal">×</button></div>
-    <div class="modal-body"><p>Delete mechanic <strong id="deleteMechanicName"></strong>?</p></div>
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header"><span class="modal-title">⚠️ Confirm Deletion</span><button class="modal-close" data-dismiss="modal">×</button></div>
+    <div class="modal-body">
+      <p>Are you sure you want to delete this mechanic?</p>
+      <div class="info-panel" style="margin-top:12px">
+        <div class="info-item"><div class="info-label">Name</div><div class="info-value" id="delMechanicName">—</div></div>
+        <div class="info-item"><div class="info-label">Phone</div><div class="info-value" id="delMechanicPhone">—</div></div>
+        <div class="info-item"><div class="info-label">Specialization</div><div class="info-value" id="delMechanicSpec">—</div></div>
+      </div>
+      <p class="text-sm text-muted">This action cannot be undone.</p>
+    </div>
     <div class="modal-footer">
       <button class="btn btn-outline" data-dismiss="modal">Cancel</button>
-      <button class="btn btn-danger" id="btnConfirmDelete">Delete</button>
+      <button class="btn btn-danger" id="btnConfirmDelete">🗑️ Delete</button>
     </div>
   </div>
 </div>
 
 <script src="../js/app.js"></script>
 <script>
-(function() {
+(function () {
+  'use strict';
   let allMechanics = [];
-  let editingId = null;
-  const tbody = document.getElementById('mechanicsTbody');
+  let editingId    = null;
+  let pendingDel   = null;
+  let pendingAvail = null;
+
+  const tbody       = document.getElementById('mechanicsTbody');
+  const searchInput = document.getElementById('searchInput');
+  const filterAvail = document.getElementById('filterAvail');
+  const filterSpec  = document.getElementById('filterSpec');
+  const btnClear    = document.getElementById('btnClear');
+  const countEl     = document.getElementById('recordCount');
   const pageAlerts  = document.getElementById('pageAlerts');
   const modalAlerts = document.getElementById('modalAlerts');
-  const saveBtn     = document.getElementById('btnSaveMechanic');
+  const saveBtn     = document.getElementById('btnSave');
 
-  async function loadMechanics() {
-    tableLoading(tbody, 6);
-    try {
-      allMechanics = await apiGet('/api/mechanics');
-      renderTable(allMechanics);
-    } catch(e) {
-      showAlert(pageAlerts, e.message, 'danger');
-      tableEmpty(tbody, 'Failed to load mechanics.', 6);
-    }
-  }
+  function updateCount(n, t) { countEl.textContent = n === t ? `${t} mechanic${t !== 1 ? 's' : ''}` : `${n} of ${t}`; }
 
   function renderTable(data) {
-    if (!data || data.length === 0) { tableEmpty(tbody, 'No mechanics found.', 6); return; }
-    tbody.innerHTML = data.map(m => `
+    if (!data || data.length === 0) { tableEmpty(tbody, 'No mechanics found matching current filters.', 7); return; }
+    tbody.innerHTML = data.map((m, i) => `
       <tr>
+        <td class="text-muted text-sm">${i + 1}</td>
         <td class="fw-600">${escHtml(m.mechanicId)}</td>
         <td>${escHtml(m.name)}</td>
         <td>${escHtml(m.phone)}</td>
@@ -140,16 +195,58 @@
         <td>${availabilityBadge(m.availability)}</td>
         <td>
           <div class="table-actions">
-            <button class="btn btn-outline btn-sm btn-icon" onclick="editMechanic(${m.mechanicId})">✏️</button>
-            <button class="btn btn-danger  btn-sm btn-icon" onclick="deleteMechanic(${m.mechanicId}, '${escHtml(m.name)}')">🗑️</button>
+            <button class="btn btn-outline btn-sm" onclick="editMechanic(${m.mechanicId})" title="Edit mechanic">✏️ Edit</button>
+            <button class="btn btn-outline btn-sm" onclick="updateAvail(${m.mechanicId}, '${escHtml(m.name)}', '${escHtml(m.availability)}')" title="Update availability">🔄 Avail</button>
+            <button class="btn btn-danger  btn-sm" onclick="deleteMechanic(${m.mechanicId})" title="Delete mechanic">🗑️</button>
           </div>
         </td>
       </tr>`).join('');
   }
 
+  function applyFilter() {
+    const q    = searchInput.value.toLowerCase().trim();
+    const avail= filterAvail.value;
+    const spec = filterSpec.value;
+    btnClear.style.display = (q || avail || spec) ? 'inline-block' : 'none';
+    let d = allMechanics;
+    if (q) {
+      d = d.filter(m =>
+        (m.name || '').toLowerCase().includes(q) ||
+        (m.phone || '').toLowerCase().includes(q) ||
+        (m.specialization || '').toLowerCase().includes(q)
+      );
+    }
+    if (avail) d = d.filter(m => m.availability === avail);
+    if (spec)  d = d.filter(m => m.specialization === spec);
+    renderTable(d);
+    updateCount(d.length, allMechanics.length);
+  }
+  searchInput.addEventListener('input', applyFilter);
+  filterAvail.addEventListener('change', applyFilter);
+  filterSpec.addEventListener('change', applyFilter);
+  btnClear.addEventListener('click', () => {
+    searchInput.value = '';
+    filterAvail.value = '';
+    filterSpec.value = '';
+    applyFilter();
+    searchInput.focus();
+  });
+
+  async function load() {
+    tableLoading(tbody, 7);
+    try {
+      allMechanics = await apiGet('/api/mechanics');
+      renderTable(allMechanics);
+      updateCount(allMechanics.length, allMechanics.length);
+    } catch (e) {
+      showAlert(pageAlerts, e.message, 'danger');
+      tableEmpty(tbody, 'Failed to load mechanics. ' + e.message, 7);
+    }
+  }
+
   document.getElementById('btnAddMechanic').addEventListener('click', () => {
     editingId = null;
-    document.getElementById('mechanicModalTitle').textContent = 'Add Mechanic';
+    document.getElementById('mechanicModalTitle').textContent = 'Add New Mechanic';
     document.getElementById('mechanicForm').reset();
     clearAlerts(modalAlerts);
     openModal('mechanicModal');
@@ -160,29 +257,32 @@
     const name = document.getElementById('mName').value.trim();
     const phone= document.getElementById('mPhone').value.trim();
     const spec = document.getElementById('mSpec').value;
-
-    if (!name || !phone || !spec) { showAlert(modalAlerts, 'All fields are required.', 'warning'); return; }
+    if (!name || name.length < 2) { showAlert(modalAlerts, 'Full name must be at least 2 characters.', 'warning'); return; }
+    if (!phone) { showAlert(modalAlerts, 'Phone number is required.', 'warning'); return; }
+    if (!/^[0-9]{10}$/.test(phone)) { showAlert(modalAlerts, 'Phone number must be exactly 10 digits.', 'warning'); return; }
+    if (!spec) { showAlert(modalAlerts, 'Please select a specialization.', 'warning'); return; }
 
     const payload = { name, phone, specialization: spec };
-    setLoading(saveBtn, true);
+    setLoading(saveBtn, true, 'Save Mechanic');
     try {
       if (editingId) {
         await apiPut(`/api/mechanics/${editingId}`, payload);
-        showAlert(pageAlerts, 'Mechanic updated!', 'success');
+        showAlert(pageAlerts, `✅ Mechanic "${payload.name}" updated successfully!`, 'success');
       } else {
         await apiPost('/api/mechanics', payload);
-        showAlert(pageAlerts, 'Mechanic added!', 'success');
+        showAlert(pageAlerts, `✅ Mechanic "${payload.name}" added successfully!`, 'success');
       }
       closeModal('mechanicModal');
-      await loadMechanics();
-    } catch(e) {
+      await load();
+      applyFilter();
+    } catch (e) {
       showAlert(modalAlerts, e.message, 'danger');
     } finally {
       setLoading(saveBtn, false, 'Save Mechanic');
     }
   });
 
-  window.editMechanic = function(id) {
+  window.editMechanic = function (id) {
     const m = allMechanics.find(x => x.mechanicId === id);
     if (!m) return;
     editingId = id;
@@ -194,32 +294,62 @@
     openModal('mechanicModal');
   };
 
-  let pendingDeleteId = null;
-  window.deleteMechanic = function(id, name) {
-    pendingDeleteId = id;
-    document.getElementById('deleteMechanicName').textContent = name;
-    openModal('deleteModal');
+  window.updateAvail = function (id, name, current) {
+    pendingAvail = id;
+    document.getElementById('availMechanicName').textContent = name;
+    document.getElementById('availSelect').value = current || 'AVAILABLE';
+    clearAlerts(document.getElementById('availAlerts'));
+    openModal('availModal');
   };
-  document.getElementById('btnConfirmDelete').addEventListener('click', async () => {
-    if (!pendingDeleteId) return;
-    const btn = document.getElementById('btnConfirmDelete');
-    setLoading(btn, true, 'Delete');
+  document.getElementById('btnSaveAvail').addEventListener('click', async () => {
+    if (!pendingAvail) return;
+    const status = document.getElementById('availSelect').value;
+    const btn = document.getElementById('btnSaveAvail');
+    setLoading(btn, true, 'Update');
     try {
-      await apiDelete(`/api/mechanics/${pendingDeleteId}`);
-      closeModal('deleteModal');
-      showAlert(pageAlerts, 'Mechanic deleted.', 'success');
-      await loadMechanics();
-    } catch(e) {
-      closeModal('deleteModal');
-      showAlert(pageAlerts, e.message, 'danger');
+      await apiPatch(`/api/mechanics/${pendingAvail}/availability?status=${status}`);
+      closeModal('availModal');
+      showAlert(pageAlerts, `✅ Availability for mechanic #${pendingAvail} updated to ${status}!`, 'success');
+      await load();
+      applyFilter();
+    } catch (e) {
+      showAlert(document.getElementById('availAlerts'), e.message, 'danger');
     } finally {
-      setLoading(btn, false, 'Delete');
-      pendingDeleteId = null;
+      setLoading(btn, false, 'Update');
+      pendingAvail = null;
     }
   });
 
-  document.getElementById('btnRefresh').addEventListener('click', loadMechanics);
-  loadMechanics();
+  window.deleteMechanic = function (id) {
+    const m = allMechanics.find(x => x.mechanicId === id);
+    if (!m) return;
+    pendingDel = id;
+    document.getElementById('delMechanicName').textContent = m.name;
+    document.getElementById('delMechanicPhone').textContent = m.phone;
+    document.getElementById('delMechanicSpec').textContent = m.specialization;
+    openModal('deleteModal');
+  };
+  document.getElementById('btnConfirmDelete').addEventListener('click', async () => {
+    if (!pendingDel) return;
+    const btn = document.getElementById('btnConfirmDelete');
+    setLoading(btn, true, '🗑️ Delete');
+    try {
+      await apiDelete(`/api/mechanics/${pendingDel}`);
+      closeModal('deleteModal');
+      showAlert(pageAlerts, 'Mechanic deleted successfully.', 'success');
+      await load();
+      applyFilter();
+    } catch (e) {
+      closeModal('deleteModal');
+      showAlert(pageAlerts, e.message, 'danger');
+    } finally {
+      setLoading(btn, false, '🗑️ Delete');
+      pendingDel = null;
+    }
+  });
+
+  document.getElementById('btnRefresh').addEventListener('click', load);
+  load();
 })();
 </script>
 </body>

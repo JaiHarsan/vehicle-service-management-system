@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dashboard – Vehicle Service Management System</title>
-  <meta name="description" content="Vehicle Service Management System dashboard showing live counts of customers, vehicles, mechanics, bookings, and bills." />
+  <meta name="description" content="Vehicle Service Management System dashboard — live stats and quick actions." />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -54,7 +54,7 @@
     </nav>
 
     <div class="sidebar-footer">
-      Phase 9A &bull; Spring Boot + MySQL
+      Phase 9B &bull; Spring Boot + MySQL
     </div>
   </aside>
 
@@ -67,12 +67,13 @@
     <header class="top-header">
       <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
       <div class="header-title">
-        Dashboard <span class="header-subtitle">Overview</span>
+        Dashboard <span class="header-subtitle">Live Overview</span>
       </div>
       <div class="header-right">
         <div class="header-badge">
           <span class="status-dot"></span> Live Data
         </div>
+        <button class="btn btn-outline btn-sm" id="refreshDashboard">↻ Refresh</button>
       </div>
     </header>
 
@@ -82,10 +83,12 @@
       <div class="page-header">
         <div class="page-header-left">
           <h1>Welcome to VehicleServ</h1>
-          <p>Real-time overview from the MySQL database via Spring Boot REST API</p>
+          <p>Real-time overview — MySQL database via Spring Boot REST API</p>
         </div>
-        <button class="btn btn-outline" id="refreshDashboard">↻ Refresh</button>
       </div>
+
+      <!-- Alert area -->
+      <div id="dashAlerts"></div>
 
       <!-- Stats Cards -->
       <div class="stats-grid" id="statsGrid">
@@ -126,8 +129,8 @@
         </div>
       </div>
 
-      <!-- Alert area -->
-      <div id="dashAlerts"></div>
+      <!-- Derived insight pills -->
+      <div id="insightRow" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px"></div>
 
       <!-- Two-column detail cards -->
       <div class="dashboard-grid">
@@ -142,11 +145,7 @@
             <table>
               <thead>
                 <tr>
-                  <th>ID</th>
-                  <th>Vehicle ID</th>
-                  <th>Service ID</th>
-                  <th>Date</th>
-                  <th>Status</th>
+                  <th>ID</th><th>Vehicle</th><th>Service</th><th>Date</th><th>Status</th>
                 </tr>
               </thead>
               <tbody id="recentBookingsTbody">
@@ -165,12 +164,7 @@
           <div class="table-container">
             <table>
               <thead>
-                <tr>
-                  <th>Bill ID</th>
-                  <th>Record ID</th>
-                  <th>Total</th>
-                  <th>Status</th>
-                </tr>
+                <tr><th>Bill ID</th><th>Record ID</th><th>Total</th><th>Status</th></tr>
               </thead>
               <tbody id="recentBillsTbody">
                 <tr class="loading-row"><td colspan="4"><span class="spinner spinner-dark"></span> Loading…</td></tr>
@@ -182,7 +176,7 @@
         <!-- Mechanics Availability -->
         <div class="card">
           <div class="card-header">
-            <span class="card-title">🔧 Mechanics</span>
+            <span class="card-title">🔧 Mechanics Availability</span>
             <a href="pages/mechanics.html" class="btn btn-ghost btn-sm">Manage →</a>
           </div>
           <div class="table-container">
@@ -197,7 +191,7 @@
           </div>
         </div>
 
-        <!-- Quick Links -->
+        <!-- Quick Actions -->
         <div class="card">
           <div class="card-header">
             <span class="card-title">⚡ Quick Actions</span>
@@ -207,9 +201,19 @@
               <a href="pages/customers.html" class="btn btn-primary w-full" style="justify-content:center;">+ Add Customer</a>
               <a href="pages/vehicles.html"  class="btn btn-primary w-full" style="justify-content:center;">+ Add Vehicle</a>
               <a href="pages/bookings.html"  class="btn btn-success w-full" style="justify-content:center;">+ New Booking</a>
+              <a href="pages/service-records.html" class="btn btn-outline w-full" style="justify-content:center;">+ Service Record</a>
               <a href="pages/billing.html"   class="btn btn-warning w-full" style="justify-content:center;">+ Generate Bill</a>
-              <a href="pages/mechanics.html" class="btn btn-outline w-full" style="justify-content:center;">Mechanics</a>
-              <a href="pages/services.html"  class="btn btn-outline w-full" style="justify-content:center;">Service Catalog</a>
+              <a href="pages/mechanics.html" class="btn btn-outline w-full" style="justify-content:center;">Update Availability</a>
+            </div>
+
+            <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+              <div style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Browse Modules</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <a href="pages/services.html"        class="btn btn-outline btn-sm">🛠️ Services</a>
+                <a href="pages/vehicles.html"        class="btn btn-outline btn-sm">🚙 Vehicles</a>
+                <a href="pages/service-records.html" class="btn btn-outline btn-sm">📋 Records</a>
+                <a href="pages/billing.html"         class="btn btn-outline btn-sm">💰 Billing</a>
+              </div>
             </div>
           </div>
         </div>
@@ -221,6 +225,7 @@
 
 <script src="js/app.js"></script>
 <script>
+'use strict';
 (async function loadDashboard() {
 
   async function safeGet(path) {
@@ -228,11 +233,14 @@
     catch (e) { return null; }
   }
 
-  function setStat(id, data) {
+  function setStat(id, data, failMsg) {
     const el = document.getElementById(id);
     if (!el) return;
-    el.textContent = data !== null ? (Array.isArray(data) ? data.length : '—') : '?';
-    if (data === null) el.style.color = 'var(--text-muted)';
+    if (data === null) {
+      el.innerHTML = '<span style="color:var(--danger);font-size:18px" title="' + escHtml(failMsg || 'Error') + '">!</span>';
+    } else {
+      el.textContent = Array.isArray(data) ? data.length : '—';
+    }
   }
 
   async function load() {
@@ -249,19 +257,42 @@
       safeGet('/api/bills')
     ]);
 
+    // Show connectivity warning only if all core APIs fail
     if (!customers && !vehicles && !bookings) {
-      showAlert(alertBox, 'Could not connect to the backend. Make sure Spring Boot is running on port 8080.', 'danger', 0);
+      showAlert(alertBox,
+        'Could not connect to the backend. Make sure Spring Boot is running on port 8080.',
+        'danger', 0);
     }
 
-    setStat('statCustomers', customers);
-    setStat('statVehicles',  vehicles);
-    setStat('statMechanics', mechanics);
-    setStat('statServices',  services);
-    setStat('statBookings',  bookings);
-    setStat('statRecords',   records);
-    setStat('statBills',     bills);
+    setStat('statCustomers', customers, 'Could not load customers');
+    setStat('statVehicles',  vehicles,  'Could not load vehicles');
+    setStat('statMechanics', mechanics, 'Could not load mechanics');
+    setStat('statServices',  services,  'Could not load services');
+    setStat('statBookings',  bookings,  'Could not load bookings');
+    setStat('statRecords',   records,   'Could not load service records');
+    setStat('statBills',     bills,     'Could not load bills');
 
-    // Recent bookings
+    // Derived insight pills
+    const insightRow = document.getElementById('insightRow');
+    insightRow.innerHTML = '';
+    if (bookings) {
+      const active  = bookings.filter(b => ['BOOKED','ASSIGNED','IN_PROGRESS'].includes(b.status)).length;
+      const pending = bookings.filter(b => b.status === 'BOOKED').length;
+      insightRow.innerHTML += `<span class="badge badge-yellow" style="font-size:12px;padding:5px 12px">📅 ${active} active booking${active !== 1 ? 's' : ''}</span>`;
+      if (pending > 0)
+        insightRow.innerHTML += `<span class="badge badge-red" style="font-size:12px;padding:5px 12px">⏳ ${pending} awaiting mechanic</span>`;
+    }
+    if (bills) {
+      const unpaid = bills.filter(b => b.paymentStatus === 'PENDING').length;
+      if (unpaid > 0)
+        insightRow.innerHTML += `<span class="badge badge-yellow" style="font-size:12px;padding:5px 12px">💳 ${unpaid} unpaid bill${unpaid !== 1 ? 's' : ''}</span>`;
+    }
+    if (mechanics) {
+      const avail = mechanics.filter(m => m.availability === 'AVAILABLE').length;
+      insightRow.innerHTML += `<span class="badge badge-green" style="font-size:12px;padding:5px 12px">🔧 ${avail} mechanic${avail !== 1 ? 's' : ''} available</span>`;
+    }
+
+    // Recent bookings (last 5, newest first)
     const bTbody = document.getElementById('recentBookingsTbody');
     if (bookings && bookings.length > 0) {
       const recent = bookings.slice(-5).reverse();
@@ -273,26 +304,30 @@
           <td>${formatDate(b.serviceDate)}</td>
           <td>${bookingStatusBadge(b.status)}</td>
         </tr>`).join('');
-    } else {
+    } else if (bookings) {
       tableEmpty(bTbody, 'No bookings yet.', 5);
+    } else {
+      tableEmpty(bTbody, 'Failed to load bookings.', 5);
     }
 
-    // Recent bills
+    // Recent bills (last 5, newest first)
     const billTbody = document.getElementById('recentBillsTbody');
     if (bills && bills.length > 0) {
       const recent = bills.slice(-5).reverse();
       billTbody.innerHTML = recent.map(b => `
         <tr>
           <td class="fw-600">#${escHtml(b.billId)}</td>
-          <td>${escHtml(b.recordId)}</td>
-          <td>${formatCurrency(b.totalAmount)}</td>
+          <td>R-${escHtml(b.recordId)}</td>
+          <td class="fw-600">${formatCurrency(b.totalAmount)}</td>
           <td>${paymentStatusBadge(b.paymentStatus)}</td>
         </tr>`).join('');
-    } else {
+    } else if (bills) {
       tableEmpty(billTbody, 'No bills yet.', 4);
+    } else {
+      tableEmpty(billTbody, 'Failed to load bills.', 4);
     }
 
-    // Mechanics
+    // Mechanics availability
     const mTbody = document.getElementById('mechanicsTbody');
     if (mechanics && mechanics.length > 0) {
       mTbody.innerHTML = mechanics.map(m => `
@@ -302,8 +337,10 @@
           <td>${escHtml(m.specialization)}</td>
           <td>${availabilityBadge(m.availability)}</td>
         </tr>`).join('');
+    } else if (mechanics) {
+      tableEmpty(mTbody, 'No mechanics added yet.', 4);
     } else {
-      tableEmpty(mTbody, 'No mechanics.', 4);
+      tableEmpty(mTbody, 'Failed to load mechanics.', 4);
     }
   }
 

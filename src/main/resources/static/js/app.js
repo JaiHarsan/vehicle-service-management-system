@@ -176,9 +176,10 @@ function paymentStatusBadge(status) {
 }
 
 function availabilityBadge(status) {
-  return status === 'AVAILABLE'
-    ? '<span class="badge badge-green">AVAILABLE</span>'
-    : '<span class="badge badge-red">BUSY</span>';
+  if (status === 'AVAILABLE')   return '<span class="badge badge-green">AVAILABLE</span>';
+  if (status === 'BUSY')        return '<span class="badge badge-yellow">BUSY</span>';
+  if (status === 'UNAVAILABLE') return '<span class="badge badge-red">UNAVAILABLE</span>';
+  return `<span class="badge badge-gray">${escHtml(status || '—')}</span>`;
 }
 
 /* =============================================

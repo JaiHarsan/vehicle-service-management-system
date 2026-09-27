@@ -23,7 +23,7 @@
       <a class="nav-item" data-page="service-records.html" href="service-records.html"><span class="nav-icon">📋</span> Service Records</a>
       <a class="nav-item" data-page="billing.html"         href="billing.html"><span class="nav-icon">💰</span> Billing</a>
     </nav>
-    <div class="sidebar-footer">Phase 9A &bull; Spring Boot + MySQL</div>
+    <div class="sidebar-footer">Phase 9D &bull; Spring Boot + MySQL</div>
   </aside>
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
@@ -31,23 +31,38 @@
     <header class="top-header">
       <button class="menu-toggle" id="menuToggle">☰</button>
       <div class="header-title">Service Catalog <span class="header-subtitle">Offered services &amp; pricing</span></div>
-      <div class="header-right"><div class="header-badge"><span class="status-dot"></span> Live Data</div></div>
+      <div class="header-right">
+        <div class="header-badge"><span class="status-dot"></span> Live Data</div>
+        <button class="btn btn-primary" id="btnAddService">+ Add Service</button>
+      </div>
     </header>
 
     <main class="page-content">
-      <div class="page-header">
-        <div class="page-header-left"><h1>Service Catalog</h1><p>Define and manage offered vehicle services</p></div>
-        <button class="btn btn-primary" id="btnAddService">+ Add Service</button>
-      </div>
       <div id="pageAlerts"></div>
       <div class="card">
-        <div class="card-header">
-          <span class="card-title">🛠️ Services</span>
-          <button class="btn btn-outline btn-sm" id="btnRefresh">↻ Refresh</button>
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <div class="search-input-wrap" style="min-width:240px">
+              <span class="search-icon">🔍</span>
+              <input type="search" class="search-input" id="searchInput" placeholder="Search by service name, description…"/>
+            </div>
+            <button class="btn-clear" id="btnClear" title="Clear filters" style="display:none">✕</button>
+            <select class="filter-select" id="sortSelect">
+              <option value="">Sort: Default</option>
+              <option value="name_asc">Name (A–Z)</option>
+              <option value="price_asc">Price (Low → High)</option>
+              <option value="price_desc">Price (High → Low)</option>
+            </select>
+            <span class="record-count" id="recordCount">Loading…</span>
+          </div>
+          <div class="toolbar-right">
+            <button class="btn btn-outline btn-sm" id="btnRefresh">↻ Refresh</button>
+          </div>
         </div>
+        <div class="card-header" style="padding:14px 20px"><span class="card-title">🛠️ Service Catalog</span></div>
         <div class="table-container">
           <table>
-            <thead><tr><th>ID</th><th>Service Name</th><th>Base Price (₹)</th><th>Description</th><th>Actions</th></tr></thead>
+            <thead><tr><th>#</th><th>ID</th><th>Service Name</th><th>Base Price</th><th>Description</th><th>Actions</th></tr></thead>
             <tbody id="servicesTbody"></tbody>
           </table>
         </div>
@@ -65,84 +80,134 @@
     </div>
     <div class="modal-body">
       <div id="modalAlerts"></div>
-      <form id="serviceForm" novalidate>
+      <form id="serviceForm" novalidate autocomplete="off">
         <div class="form-grid">
           <div class="form-group">
-            <label class="form-label" for="sName">Service Name *</label>
-            <input class="form-control" id="sName" required placeholder="e.g. General Service" />
+            <label class="form-label" for="sName">Service Name <span style="color:var(--danger)">*</span></label>
+            <input class="form-control" id="sName" required placeholder="e.g. General Service" maxlength="100"/>
+            <span class="form-hint">At least 2 characters</span>
           </div>
           <div class="form-group">
-            <label class="form-label" for="sPrice">Base Price (₹) *</label>
-            <input class="form-control" id="sPrice" required type="number" min="0" step="0.01" placeholder="e.g. 1500.00" />
+            <label class="form-label" for="sPrice">Base Price (₹) <span style="color:var(--danger)">*</span></label>
+            <input class="form-control" id="sPrice" required type="number" min="0" step="0.01" placeholder="e.g. 1500.00"/>
+            <span class="form-hint">Non-negative amount (₹0 or greater)</span>
           </div>
           <div class="form-group" style="grid-column:1/-1">
             <label class="form-label" for="sDesc">Description</label>
-            <textarea class="form-control" id="sDesc" rows="3" placeholder="Brief description of the service…"></textarea>
+            <textarea class="form-control" id="sDesc" rows="3" placeholder="Brief service description…" maxlength="500"></textarea>
+            <span class="form-hint">Optional service details</span>
           </div>
         </div>
       </form>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" data-dismiss="modal">Cancel</button>
-      <button class="btn btn-primary" id="btnSaveService">Save Service</button>
+      <button class="btn btn-primary" id="btnSave">Save Service</button>
     </div>
   </div>
 </div>
 
 <!-- DELETE CONFIRM -->
 <div class="modal-overlay hidden" id="deleteModal">
-  <div class="modal" style="max-width:380px">
-    <div class="modal-header"><span class="modal-title">Confirm Delete</span><button class="modal-close" data-dismiss="modal">×</button></div>
-    <div class="modal-body"><p>Delete service <strong id="deleteServiceName"></strong>?</p></div>
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header"><span class="modal-title">⚠️ Confirm Deletion</span><button class="modal-close" data-dismiss="modal">×</button></div>
+    <div class="modal-body">
+      <p>Are you sure you want to delete this service?</p>
+      <div class="info-panel" style="margin-top:12px">
+        <div class="info-item"><div class="info-label">Service Name</div><div class="info-value" id="delServiceName">—</div></div>
+        <div class="info-item"><div class="info-label">Service ID</div><div class="info-value" id="delServiceId">—</div></div>
+        <div class="info-item"><div class="info-label">Base Price</div><div class="info-value" id="delServicePrice">—</div></div>
+      </div>
+      <p class="text-sm text-muted">Bookings using this service may be affected.</p>
+    </div>
     <div class="modal-footer">
       <button class="btn btn-outline" data-dismiss="modal">Cancel</button>
-      <button class="btn btn-danger" id="btnConfirmDelete">Delete</button>
+      <button class="btn btn-danger" id="btnConfirmDelete">🗑️ Delete Service</button>
     </div>
   </div>
 </div>
 
 <script src="../js/app.js"></script>
 <script>
-(function() {
+(function () {
+  'use strict';
   let allServices = [];
-  let editingId = null;
-  const tbody = document.getElementById('servicesTbody');
+  let editingId   = null;
+  let pendingDel  = null;
+
+  const tbody       = document.getElementById('servicesTbody');
+  const searchInput = document.getElementById('searchInput');
+  const sortSelect  = document.getElementById('sortSelect');
+  const btnClear    = document.getElementById('btnClear');
+  const countEl     = document.getElementById('recordCount');
   const pageAlerts  = document.getElementById('pageAlerts');
   const modalAlerts = document.getElementById('modalAlerts');
-  const saveBtn     = document.getElementById('btnSaveService');
+  const saveBtn     = document.getElementById('btnSave');
 
-  async function loadServices() {
-    tableLoading(tbody, 5);
-    try {
-      allServices = await apiGet('/api/services');
-      renderTable(allServices);
-    } catch(e) {
-      showAlert(pageAlerts, e.message, 'danger');
-      tableEmpty(tbody, 'Failed to load services.', 5);
-    }
-  }
+  function updateCount(n, t) { countEl.textContent = n === t ? `${t} service${t !== 1 ? 's' : ''}` : `${n} of ${t}`; }
 
   function renderTable(data) {
-    if (!data || data.length === 0) { tableEmpty(tbody, 'No services found.', 5); return; }
-    tbody.innerHTML = data.map(s => `
+    if (!data || data.length === 0) { tableEmpty(tbody, 'No services found matching current filters.', 6); return; }
+    tbody.innerHTML = data.map((s, i) => `
       <tr>
+        <td class="text-muted text-sm">${i + 1}</td>
         <td class="fw-600">${escHtml(s.serviceId)}</td>
-        <td>${escHtml(s.serviceName)}</td>
-        <td class="fw-600">${formatCurrency(s.basePrice)}</td>
+        <td class="fw-600">${escHtml(s.serviceName)}</td>
+        <td class="fw-600" style="color:var(--success)">${formatCurrency(s.basePrice)}</td>
         <td class="text-muted text-sm">${escHtml(s.description) || '—'}</td>
         <td>
           <div class="table-actions">
-            <button class="btn btn-outline btn-sm btn-icon" onclick="editService(${s.serviceId})">✏️</button>
-            <button class="btn btn-danger  btn-sm btn-icon" onclick="deleteService(${s.serviceId}, '${escHtml(s.serviceName)}')">🗑️</button>
+            <button class="btn btn-outline btn-sm" onclick="editService(${s.serviceId})" title="Edit service">✏️ Edit</button>
+            <button class="btn btn-danger  btn-sm" onclick="deleteService(${s.serviceId})" title="Delete service">🗑️</button>
           </div>
         </td>
       </tr>`).join('');
   }
 
+  function applyFilter() {
+    const q    = searchInput.value.toLowerCase().trim();
+    const sort = sortSelect.value;
+    btnClear.style.display = (q || sort) ? 'inline-block' : 'none';
+    let d = allServices;
+    if (q) {
+      d = d.filter(s =>
+        (s.serviceName || '').toLowerCase().includes(q) ||
+        (s.description || '').toLowerCase().includes(q)
+      );
+    }
+    if (sort === 'price_asc')  d = [...d].sort((a, b) => Number(a.basePrice || 0) - Number(b.basePrice || 0));
+    if (sort === 'price_desc') d = [...d].sort((a, b) => Number(b.basePrice || 0) - Number(a.basePrice || 0));
+    if (sort === 'name_asc')   d = [...d].sort((a, b) => (a.serviceName || '').localeCompare(b.serviceName || ''));
+    renderTable(d);
+    updateCount(d.length, allServices.length);
+  }
+  searchInput.addEventListener('input', applyFilter);
+  sortSelect.addEventListener('change', applyFilter);
+  btnClear.addEventListener('click', () => {
+    searchInput.value = '';
+    sortSelect.value = '';
+    applyFilter();
+    searchInput.focus();
+  });
+
+  async function load() {
+    tableLoading(tbody, 6);
+    try {
+      allServices = await apiGet('/api/services');
+      renderTable(allServices);
+      updateCount(allServices.length, allServices.length);
+    } catch (e) {
+      showAlert(pageAlerts, e.message, 'danger');
+      tableEmpty(tbody, 'Failed to load services. ' + e.message, 6);
+    }
+  }
+
   document.getElementById('btnAddService').addEventListener('click', () => {
     editingId = null;
-    document.getElementById('serviceModalTitle').textContent = 'Add Service';
-    document.getElementById('serviceForm').reset();
+    document.getElementById('serviceModalTitle').textContent = 'Add New Service';
+    document.getElementById('sName').value  = '';
+    document.getElementById('sPrice').value = '';
+    document.getElementById('sDesc').value  = '';
     clearAlerts(modalAlerts);
     openModal('serviceModal');
   });
@@ -153,65 +218,74 @@
     const price = document.getElementById('sPrice').value.trim();
     const desc  = document.getElementById('sDesc').value.trim();
 
-    if (!name || !price) { showAlert(modalAlerts, 'Name and price are required.', 'warning'); return; }
+    if (!name || name.length < 2) { showAlert(modalAlerts, 'Service name must be at least 2 characters.', 'warning'); return; }
+    if (price === '' || isNaN(parseFloat(price)) || parseFloat(price) < 0) {
+      showAlert(modalAlerts, 'Base price must be a valid non-negative amount (₹0 or greater).', 'warning');
+      return;
+    }
 
     const payload = { serviceName: name, basePrice: parseFloat(price), description: desc || null };
-    setLoading(saveBtn, true);
+    setLoading(saveBtn, true, 'Save Service');
     try {
       if (editingId) {
         await apiPut(`/api/services/${editingId}`, payload);
-        showAlert(pageAlerts, 'Service updated!', 'success');
+        showAlert(pageAlerts, `✅ Service "${payload.serviceName}" updated successfully!`, 'success');
       } else {
         await apiPost('/api/services', payload);
-        showAlert(pageAlerts, 'Service added!', 'success');
+        showAlert(pageAlerts, `✅ Service "${payload.serviceName}" added successfully!`, 'success');
       }
       closeModal('serviceModal');
-      await loadServices();
-    } catch(e) {
+      await load();
+      applyFilter();
+    } catch (e) {
       showAlert(modalAlerts, e.message, 'danger');
     } finally {
       setLoading(saveBtn, false, 'Save Service');
     }
   });
 
-  window.editService = function(id) {
+  window.editService = function (id) {
     const s = allServices.find(x => x.serviceId === id);
     if (!s) return;
     editingId = id;
     document.getElementById('serviceModalTitle').textContent = 'Edit Service';
     document.getElementById('sName').value  = s.serviceName || '';
-    document.getElementById('sPrice').value = s.basePrice || '';
+    document.getElementById('sPrice').value = s.basePrice != null ? s.basePrice : '';
     document.getElementById('sDesc').value  = s.description || '';
     clearAlerts(modalAlerts);
     openModal('serviceModal');
   };
 
-  let pendingDeleteId = null;
-  window.deleteService = function(id, name) {
-    pendingDeleteId = id;
-    document.getElementById('deleteServiceName').textContent = name;
+  window.deleteService = function (id) {
+    const s = allServices.find(x => x.serviceId === id);
+    if (!s) return;
+    pendingDel = id;
+    document.getElementById('delServiceName').textContent = s.serviceName;
+    document.getElementById('delServiceId').textContent = s.serviceId;
+    document.getElementById('delServicePrice').textContent = formatCurrency(s.basePrice);
     openModal('deleteModal');
   };
   document.getElementById('btnConfirmDelete').addEventListener('click', async () => {
-    if (!pendingDeleteId) return;
+    if (!pendingDel) return;
     const btn = document.getElementById('btnConfirmDelete');
-    setLoading(btn, true, 'Delete');
+    setLoading(btn, true, '🗑️ Delete Service');
     try {
-      await apiDelete(`/api/services/${pendingDeleteId}`);
+      await apiDelete(`/api/services/${pendingDel}`);
       closeModal('deleteModal');
-      showAlert(pageAlerts, 'Service deleted.', 'success');
-      await loadServices();
-    } catch(e) {
+      showAlert(pageAlerts, 'Service deleted successfully.', 'success');
+      await load();
+      applyFilter();
+    } catch (e) {
       closeModal('deleteModal');
       showAlert(pageAlerts, e.message, 'danger');
     } finally {
-      setLoading(btn, false, 'Delete');
-      pendingDeleteId = null;
+      setLoading(btn, false, '🗑️ Delete Service');
+      pendingDel = null;
     }
   });
 
-  document.getElementById('btnRefresh').addEventListener('click', loadServices);
-  loadServices();
+  document.getElementById('btnRefresh').addEventListener('click', load);
+  load();
 })();
 </script>
 </body>
