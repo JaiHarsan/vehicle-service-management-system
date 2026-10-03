@@ -2,7 +2,7 @@
 -- VEHICLE SERVICE MANAGEMENT SYSTEM - SAMPLE SEED DATA
 -- ===================================================
 
-USE vehicle_service;
+
 
 -- Insert Customers
 INSERT INTO customers (customer_id, name, phone, email) VALUES
